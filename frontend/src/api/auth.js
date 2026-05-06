@@ -1,35 +1,44 @@
 /**
- * Auth API client — wraps backend register/setPin/verifyPin endpoints
+ * Auth API client (Phase E — Cloudflare Workers)
+ *
+ * Backend functions: REST paths to Workers
+ * Session helpers: sessionStorage management (frontend-only)
  */
 
 import { post } from './client.js';
 
+// ========== Backend API calls ==========
+
+export async function checkRegistration(idToken) {
+  return post('/api/auth/check', { idToken });
+}
+
+export async function whoami(idToken) {
+  return post('/api/auth/whoami', { idToken });
+}
+
 export async function register(idToken, { department, employee_code }) {
-  return post('register', {
+  return post('/api/auth/register', {
     idToken,
     payload: { department, employee_code }
   });
 }
 
 export async function setPin(idToken, pin) {
-  return post('setPin', {
+  return post('/api/auth/setPin', {
     idToken,
     payload: { pin }
   });
 }
 
 export async function verifyPin(idToken, pin) {
-  return post('verifyPin', {
+  return post('/api/auth/verifyPin', {
     idToken,
     payload: { pin }
   });
 }
 
-export async function checkRegistration(idToken) {
-  return post('checkRegistration', { idToken });
-}
-
-// ========== Session storage helpers ==========
+// ========== Session storage helpers (frontend-only) ==========
 
 const SESSION_KEY = 'mid_manual_session';
 
@@ -41,7 +50,6 @@ export function saveSession(token, expiresAt, user) {
       user
     }));
   } catch (e) {
-    // sessionStorage might be unavailable in some browser modes
     console.warn('Cannot save session:', e);
   }
 }

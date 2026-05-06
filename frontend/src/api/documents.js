@@ -1,17 +1,14 @@
 /**
- * Documents API client
+ * Documents API (Phase E — Cloudflare Workers)
  */
 
 import { post } from './client.js';
 
 /**
  * Fetch documents, optionally filtered by category.
- * @param {string} idToken
- * @param {string} sessionToken
- * @param {string} [category] - 'full_book' | 'topic' | 'summary'
  */
 export async function getDocuments(idToken, sessionToken, category) {
-  return post('getDocuments', {
+  return post('/api/documents/list', {
     idToken,
     sessionToken,
     payload: category ? { category } : {}
