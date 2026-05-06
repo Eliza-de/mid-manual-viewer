@@ -1,7 +1,6 @@
 /**
  * API client for Apps Script Web App backend.
- *
- * Apps Script doPost requires text/plain content-type to avoid CORS preflight.
+ * Phase 2: forwards sessionToken to backend.
  */
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
@@ -10,11 +9,7 @@ if (!APPS_SCRIPT_URL && import.meta.env.PROD) {
   console.error('VITE_APPS_SCRIPT_URL is not configured');
 }
 
-/**
- * Generic POST to Apps Script.
- * Exported so other modules (api/auth.js) can compose specific endpoints.
- */
-export async function post(action, { idToken, payload, sessionToken } = {}) {
+export async function post(action, { idToken, sessionToken, payload } = {}) {
   if (!APPS_SCRIPT_URL) {
     return { ok: false, error: 'Backend URL not configured' };
   }
@@ -43,9 +38,6 @@ export async function post(action, { idToken, payload, sessionToken } = {}) {
   }
 }
 
-/**
- * GET ping (health check).
- */
 export async function ping() {
   if (!APPS_SCRIPT_URL) return { ok: false, error: 'Backend URL not configured' };
   try {
@@ -62,13 +54,4 @@ export async function ping() {
 
 export async function whoami(idToken) {
   return post('whoami', { idToken });
-}
-
-// Phase 2+ stubs (still here for completeness)
-export async function getDocuments(idToken, sessionToken) {
-  return post('getDocuments', { idToken, sessionToken });
-}
-
-export async function getPage(idToken, sessionToken, payload) {
-  return post('getPage', { idToken, sessionToken, payload });
 }
