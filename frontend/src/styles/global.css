@@ -1,0 +1,41 @@
+/* Global styles for MID Manual Viewer */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #f5f7fa;
+  color: #1f2937;
+  line-height: 1.5;
+  /* Prevent text selection across the app (anti-capture aid) */
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  /* Prevent iOS callouts on long-press */
+  -webkit-touch-callout: none;
+}
+
+/* Allow input fields to be selectable */
+input, textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Disable image dragging */
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+  pointer-events: auto;
+}
+
+/* Smooth tap feedback on mobile */
+button, a {
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
