@@ -1,9 +1,9 @@
 /**
- * Home — main authenticated page
+ * Home — Phase 5: route between regular view, Reader, and Admin pages
  *
- * Phase 3: Wraps everything in NavigationProvider.
- * If a doc is opened → render Reader (overlays everything).
- * Otherwise → render category browser with bottom tabs.
+ * If admin mode → render admin page
+ * Else if reading doc → render Reader
+ * Else → render category browser
  */
 
 import { useState } from 'react';
@@ -11,6 +11,8 @@ import { NavigationProvider, useNavigation } from '../hooks/useNavigation.jsx';
 import AppLayout from '../components/AppLayout.jsx';
 import CategoryPage from './CategoryPage.jsx';
 import Reader from './Reader.jsx';
+import AdminDashboard from './admin/AdminDashboard.jsx';
+import DocumentUpload from './admin/DocumentUpload.jsx';
 
 export default function Home() {
   return (
@@ -24,12 +26,18 @@ function HomeInner() {
   const nav = useNavigation();
   const [category, setCategory] = useState('topic');
 
-  // If reading a document → show Reader (full-screen overlay)
+  // Admin mode takes priority
+  if (nav.adminMode) {
+    if (nav.adminPage === 'upload') return <DocumentUpload />;
+    return <AdminDashboard />;
+  }
+
+  // Reader mode
   if (nav.isReading) {
     return <Reader />;
   }
 
-  // Otherwise → show category browser
+  // Default: category browser
   return (
     <AppLayout category={category} onCategoryChange={setCategory}>
       <CategoryPage category={category} />

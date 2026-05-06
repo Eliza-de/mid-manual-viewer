@@ -1,8 +1,7 @@
 /**
- * useNavigation — global navigation state for opened document + current page
+ * useNavigation — global navigation state
  *
- * Used to switch between Home (document list) and Reader (page viewer)
- * without React Router.
+ * Phase 5: เพิ่ม adminMode สำหรับ admin pages
  */
 
 import { createContext, useContext, useState, useCallback } from 'react';
@@ -12,6 +11,8 @@ const NavContext = createContext(null);
 export function NavigationProvider({ children }) {
   const [currentDoc, setCurrentDoc] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [adminMode, setAdminMode] = useState(false);
+  const [adminPage, setAdminPage] = useState('dashboard');  // 'dashboard' | 'upload'
 
   const openDoc = useCallback((doc) => {
     setCurrentDoc(doc);
@@ -31,16 +32,27 @@ export function NavigationProvider({ children }) {
 
   const nextPage = useCallback(() => {
     if (!currentDoc) return;
-    if (currentPage < currentDoc.page_count) {
-      setCurrentPage(currentPage + 1);
-    }
+    if (currentPage < currentDoc.page_count) setCurrentPage(currentPage + 1);
   }, [currentDoc, currentPage]);
 
   const prevPage = useCallback(() => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
   }, [currentPage]);
+
+  // Admin mode
+  const openAdmin = useCallback(() => {
+    setAdminMode(true);
+    setAdminPage('dashboard');
+  }, []);
+
+  const closeAdmin = useCallback(() => {
+    setAdminMode(false);
+    setAdminPage('dashboard');
+  }, []);
+
+  const goAdminPage = useCallback((page) => {
+    setAdminPage(page);
+  }, []);
 
   const value = {
     currentDoc,
@@ -50,7 +62,14 @@ export function NavigationProvider({ children }) {
     goToPage,
     nextPage,
     prevPage,
-    isReading: !!currentDoc
+    isReading: !!currentDoc,
+
+    // Admin
+    adminMode,
+    adminPage,
+    openAdmin,
+    closeAdmin,
+    goAdminPage
   };
 
   return <NavContext.Provider value={value}>{children}</NavContext.Provider>;

@@ -1,16 +1,5 @@
 /**
- * AppLayout — main layout for authenticated pages
- *
- * Structure:
- *   ┌─────────────────────────────┐
- *   │ Header (title + user menu)   │
- *   ├─────────────────────────────┤
- *   │                              │
- *   │   Content (scrollable)       │
- *   │                              │
- *   ├─────────────────────────────┤
- *   │  Bottom Tab (3 categories)   │
- *   └─────────────────────────────┘
+ * AppLayout — Phase 5: เพิ่ม Admin menu สำหรับ user ที่ is_admin=true
  */
 
 import { Layout, Avatar, Dropdown, Tag } from 'antd';
@@ -20,14 +9,17 @@ import {
   LogoutOutlined,
   BookOutlined,
   FileTextOutlined,
-  UnorderedListOutlined
+  UnorderedListOutlined,
+  SafetyCertificateOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { useNavigation } from '../hooks/useNavigation.jsx';
 
 const { Header, Content, Footer } = Layout;
 
 export default function AppLayout({ category, onCategoryChange, children }) {
   const auth = useAuth();
+  const nav = useNavigation();
 
   const userMenuItems = [
     {
@@ -46,6 +38,13 @@ export default function AppLayout({ category, onCategoryChange, children }) {
       disabled: true
     },
     { type: 'divider' },
+    // Admin menu - แสดงเฉพาะ admin
+    ...(auth.user?.isAdmin ? [{
+      key: 'admin',
+      icon: <SafetyCertificateOutlined />,
+      label: 'จัดการระบบ (Admin)',
+      onClick: nav.openAdmin
+    }, { type: 'divider' }] : []),
     {
       key: 'logout',
       icon: <LogoutOutlined />,
@@ -63,7 +62,6 @@ export default function AppLayout({ category, onCategoryChange, children }) {
 
   return (
     <Layout style={{ minHeight: '100vh', background: '#f5f7fa' }}>
-      {/* Header */}
       <Header style={headerStyle}>
         <div style={{ fontWeight: 600, color: '#1e3a5f', fontSize: 16 }}>
           MID Manual
@@ -77,14 +75,12 @@ export default function AppLayout({ category, onCategoryChange, children }) {
         </Dropdown>
       </Header>
 
-      {/* Content */}
       <Content style={contentStyle}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
           {children}
         </div>
       </Content>
 
-      {/* Bottom Tab Bar */}
       <Footer style={footerStyle}>
         <TabBar activeKey={category} onChange={onCategoryChange} safeArea>
           {tabs.map(t => (
@@ -114,7 +110,7 @@ const contentStyle = {
   padding: '16px',
   flex: 1,
   overflowY: 'auto',
-  paddingBottom: 80   // leave room for bottom tab
+  paddingBottom: 80
 };
 
 const footerStyle = {
