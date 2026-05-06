@@ -1,14 +1,9 @@
 /**
- * PageImage — Phase 4.1 fix
+ * PageImage v3 — Phase 4.2 fix
  *
- * Watermark moved OUTSIDE TransformWrapper so it's always visible
- * (doesn't get clipped or hidden when zoomed).
- *
- * Layout:
- *   .wm-host (relative)
- *     ├─ TransformWrapper (zoom/pan only the image)
- *     │   └─ <img>
- *     └─ Watermark (absolute overlay, always on top)
+ * Watermark is rendered as overlay over the entire image container.
+ * Container has explicit position: relative + size = full available space.
+ * Watermark uses absolute positioning with explicit dimensions.
  */
 
 import { useState, useRef } from 'react';
@@ -104,7 +99,7 @@ export default function PageImage({
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* Zoomable image only */}
+      {/* Zoomable image */}
       <TransformWrapper
         initialScale={1}
         minScale={1}
@@ -137,7 +132,7 @@ export default function PageImage({
         </TransformComponent>
       </TransformWrapper>
 
-      {/* Watermark overlay — sits on top of zoom area, NOT zoomed */}
+      {/* Watermark overlay — covers entire container, on top of zoom */}
       <Watermark user={auth.user} profile={auth.profile} />
 
       {tabHidden && (
@@ -161,7 +156,7 @@ const containerStyle = {
   display: 'flex',
   background: '#1f2937',
   overflow: 'hidden',
-  position: 'relative'  // สำคัญ! Watermark ใช้ inset: 0 ของตัวนี้
+  position: 'relative'   // critical: Watermark uses inset:0 of this
 };
 
 const imgStyle = {

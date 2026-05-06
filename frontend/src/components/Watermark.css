@@ -1,20 +1,47 @@
-/* Watermark overlay v2 — Phase 4.1 fix
- *
- * Changes from v1:
- *   - Removed mix-blend-mode (unreliable on LIFF in-app browser)
- *   - Use solid colored text with white stroke for contrast
- *   - Stays inside .wm-host container
- */
+/* Watermark v3 — pure CSS, no blend-mode, no SVG */
 
 .wm-overlay {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 50;
-  background-repeat: repeat;
-  background-position: 0 0;
+  overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
-  -webkit-user-drag: none;
-  /* No blend mode — explicit color contrast handles visibility */
+}
+
+/* Rotated container — hosts all rows */
+.wm-rotator {
+  position: absolute;
+  /* Make rotator larger than viewport so rotation doesn't leave corners empty */
+  top: -200px;
+  left: -200px;
+  right: -200px;
+  bottom: -200px;
+  transform: rotate(-25deg);
+  transform-origin: center center;
+}
+
+.wm-row {
+  position: absolute;
+  white-space: nowrap;
+  display: flex;
+  gap: 60px;
+}
+
+.wm-text {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Sukhumvit Set", "IBM Plex Sans Thai", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(20, 30, 50, 0.55);
+  /* Multi-shadow stroke effect — visible on light AND dark backgrounds */
+  text-shadow:
+    -1px -1px 0 rgba(255, 255, 255, 0.6),
+     1px -1px 0 rgba(255, 255, 255, 0.6),
+    -1px  1px 0 rgba(255, 255, 255, 0.6),
+     1px  1px 0 rgba(255, 255, 255, 0.6),
+     0    0   3px rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.2px;
+  user-select: none;
+  -webkit-user-select: none;
 }

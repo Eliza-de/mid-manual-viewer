@@ -1,20 +1,17 @@
 /**
- * Watermark v2 — diagonal repeating overlay with user identity
+ * Watermark v3 — Pure React render, no SVG data URI
  *
- * Phase 4.1 fix:
- *   - Remove mix-blend-mode (not reliable on LIFF in-app browser)
- *   - Use stroke + fill for visibility on any background
- *   - Wider/denser tile pattern
- *   - Stronger opacity
- *   - Render as fixed-position over Reader content (not inside zoom wrapper)
+ * Phase 4.2 fix:
+ *   - Render text directly via repeated <div>s in absolute positions
+ *   - No SVG, no data URI, no blend-mode → works everywhere
+ *   - Visible deterrent text + screenshot will capture it
  */
 
 import { useState, useEffect, useMemo } from 'react';
 import './Watermark.css';
 
-const TILE_W = 280;
-const TILE_H = 150;
-const ROTATE_DEG = -28;
+const ROW_HEIGHT = 110;
+const STAGGER = 100;
 
 export default function Watermark({ user, profile }) {
   const [now, setNow] = useState(new Date());
@@ -33,14 +30,33 @@ export default function Watermark({ user, profile }) {
     return `${name} · ${last4} · ${dept} · ${time}`;
   }, [user, profile, now]);
 
-  const dataUri = useMemo(() => buildPatternSvg(text), [text]);
+  // Build a 2D grid of repeating text — fixed count covers most screens
+  const rows = [];
+  for (let r = 0; r < 12; r++) {
+    const isOdd = r % 2 === 1;
+    rows.push(
+      <div
+        key={r}
+        className="wm-row"
+        style={{
+          top: `${r * ROW_HEIGHT}px`,
+          left: isOdd ? `${STAGGER}px` : '0px'
+        }}
+      >
+        <span className="wm-text">{text}</span>
+        <span className="wm-text">{text}</span>
+        <span className="wm-text">{text}</span>
+        <span className="wm-text">{text}</span>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className="wm-overlay"
-      style={{ backgroundImage: `url("${dataUri}")` }}
-      aria-hidden="true"
-    />
+    <div className="wm-overlay" aria-hidden="true">
+      <div className="wm-rotator">
+        {rows}
+      </div>
+    </div>
   );
 }
 
@@ -48,29 +64,4 @@ function formatHHMM(d) {
   const h = String(d.getHours()).padStart(2, '0');
   const m = String(d.getMinutes()).padStart(2, '0');
   return `${h}:${m}`;
-}
-
-function buildPatternSvg(text) {
-  const safe = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-
-  // Each tile: 2 staggered rows for denser coverage.
-  // Use stroke (white) + fill (dark gray) so text is visible on any background.
-  // Stroke goes UNDER the fill (paint-order: stroke).
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${TILE_W}" height="${TILE_H}" viewBox="0 0 ${TILE_W} ${TILE_H}">
-  <g transform="rotate(${ROTATE_DEG} ${TILE_W / 2} ${TILE_H / 2})"
-     font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-     font-size="14"
-     font-weight="700"
-     style="paint-order: stroke; stroke: rgba(255,255,255,0.55); stroke-width: 3; stroke-linejoin: round;">
-    <text x="20" y="${TILE_H * 0.30}" fill="rgba(15,23,42,0.55)">${safe}</text>
-    <text x="${TILE_W * 0.50}" y="${TILE_H * 0.78}" fill="rgba(15,23,42,0.55)">${safe}</text>
-  </g>
-</svg>`;
-
-  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
 }
