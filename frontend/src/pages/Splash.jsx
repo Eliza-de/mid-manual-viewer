@@ -22,7 +22,7 @@ export default function Splash() {
   if (auth.status === 'error') {
     return (
       <div style={containerStyle}>
-        <Card>
+        <Card style={cardStyle}>
           <Result
             status="error"
             title="ไม่สามารถโหลดระบบได้"
@@ -40,8 +40,8 @@ export default function Splash() {
 
   return (
     <div style={containerStyle}>
-      <Card>
-        <div style={{ textAlign: 'center', padding: '40px 0' }}>
+      <Card style={cardStyle}>
+        <div style={{ textAlign: 'center', padding: '40px 24px' }}>
           <Title level={3} style={{ margin: 0, color: '#1e3a5f' }}>
             MID Manual Viewer
           </Title>
@@ -49,7 +49,7 @@ export default function Splash() {
             โรงพยาบาลวิภาราม แหลมฉบัง
           </Text>
           <Spin
-            indicator={<LoadingOutlined style={{ fontSize: 32 }} spin />}
+            indicator={<LoadingOutlined style={{ fontSize: 32, color: '#1e3a5f' }} spin />}
           />
           <Text type="secondary" style={{ display: 'block', marginTop: 16, fontSize: 13 }}>
             กำลังโหลด...
@@ -61,10 +61,23 @@ export default function Splash() {
 }
 
 const containerStyle = {
-  padding: 16,
-  maxWidth: 480,
-  margin: '0 auto',
-  minHeight: '100vh',
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  width: '100vw',
+  height: '100dvh',
   display: 'flex',
-  alignItems: 'center'
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 16,
+  background: '#f5f7fa'
+};
+
+const cardStyle = {
+  width: '100%',
+  maxWidth: 400,
+  boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
 };
