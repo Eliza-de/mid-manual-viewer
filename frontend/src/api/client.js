@@ -1,9 +1,7 @@
 /**
  * API client for Apps Script Web App backend.
  *
- * IMPORTANT: Apps Script doPost requires text/plain content-type to avoid CORS preflight.
- * We send JSON.stringify body but with content-type: text/plain;charset=utf-8
- * Apps Script will still parse it via e.postData.contents.
+ * Apps Script doPost requires text/plain content-type to avoid CORS preflight.
  */
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
@@ -14,17 +12,17 @@ if (!APPS_SCRIPT_URL && import.meta.env.PROD) {
 
 /**
  * Generic POST to Apps Script.
- * @param {string} action
- * @param {object} options { idToken, payload }
+ * Exported so other modules (api/auth.js) can compose specific endpoints.
  */
-async function post(action, { idToken, payload } = {}) {
+export async function post(action, { idToken, payload, sessionToken } = {}) {
   if (!APPS_SCRIPT_URL) {
-    throw new Error('Backend URL not configured');
+    return { ok: false, error: 'Backend URL not configured' };
   }
 
   const body = {
     action,
     idToken: idToken || null,
+    sessionToken: sessionToken || null,
     payload: payload || {},
     userAgent: navigator.userAgent
   };
@@ -32,12 +30,10 @@ async function post(action, { idToken, payload } = {}) {
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      // text/plain avoids CORS preflight
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(body),
       redirect: 'follow'
     });
-
     if (!res.ok) {
       throw new Error('HTTP ' + res.status);
     }
@@ -48,7 +44,7 @@ async function post(action, { idToken, payload } = {}) {
 }
 
 /**
- * GET ping (no auth, no token needed).
+ * GET ping (health check).
  */
 export async function ping() {
   if (!APPS_SCRIPT_URL) return { ok: false, error: 'Backend URL not configured' };
@@ -64,36 +60,15 @@ export async function ping() {
   }
 }
 
-/**
- * Test endpoint that requires a valid LIFF token.
- */
 export async function whoami(idToken) {
   return post('whoami', { idToken });
 }
 
-/**
- * Phase 1+ endpoints (stubs for now)
- */
-export async function checkRegistration(idToken) {
-  return post('checkRegistration', { idToken });
+// Phase 2+ stubs (still here for completeness)
+export async function getDocuments(idToken, sessionToken) {
+  return post('getDocuments', { idToken, sessionToken });
 }
 
-export async function register(idToken, payload) {
-  return post('register', { idToken, payload });
-}
-
-export async function setPin(idToken, payload) {
-  return post('setPin', { idToken, payload });
-}
-
-export async function verifyPin(idToken, payload) {
-  return post('verifyPin', { idToken, payload });
-}
-
-export async function getDocuments(idToken) {
-  return post('getDocuments', { idToken });
-}
-
-export async function getPage(idToken, payload) {
-  return post('getPage', { idToken, payload });
+export async function getPage(idToken, sessionToken, payload) {
+  return post('getPage', { idToken, sessionToken, payload });
 }

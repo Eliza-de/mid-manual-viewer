@@ -1,0 +1,115 @@
+.pinpad {
+  user-select: none;
+  -webkit-user-select: none;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+/* ===== Dots indicator ===== */
+.pinpad__dots {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  padding: 16px 0;
+}
+
+.pinpad__dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  background: transparent;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.pinpad__dot--filled {
+  background: #1e3a5f;
+  border-color: #1e3a5f;
+  transform: scale(1.1);
+}
+
+.pinpad__hint {
+  text-align: center;
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 16px;
+  min-height: 20px;
+}
+
+/* ===== Key grid ===== */
+.pinpad__keys {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.pinpad__key {
+  height: 60px;
+  font-size: 22px;
+  font-weight: 500;
+  color: #1f2937;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 80ms ease, transform 80ms ease;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+}
+
+.pinpad__key:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.pinpad__key:active:not(:disabled) {
+  background: #e2e8f0;
+  transform: scale(0.96);
+}
+
+.pinpad__key:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pinpad__key--util {
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* ===== Shake animation on error ===== */
+.pinpad--shake .pinpad__dots {
+  animation: pinpad-shake 400ms ease;
+}
+
+.pinpad--shake .pinpad__dot {
+  border-color: #ef4444;
+}
+
+.pinpad--shake .pinpad__dot--filled {
+  background: #ef4444;
+}
+
+@keyframes pinpad-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-8px); }
+  80% { transform: translateX(8px); }
+}
+
+/* ===== Busy state ===== */
+.pinpad--busy {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.pinpad--busy .pinpad__dots {
+  animation: pinpad-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pinpad-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
