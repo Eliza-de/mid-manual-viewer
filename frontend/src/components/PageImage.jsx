@@ -1,14 +1,17 @@
 /**
- * PageImage — renders a single page PNG with pinch-to-zoom + pan
+ * PageImage — Phase 4: ภาพแสดงพร้อม Watermark overlay
  *
- * Uses react-zoom-pan-pinch for gesture handling.
- * Supports swipe for page change when not zoomed.
+ * เพิ่มจาก Phase 3:
+ *  - Watermark overlay ภายใน TransformComponent
+ *  - Blur effect เมื่อ tab hidden (ไม่บล็อกระดับ image — ทำที่ container)
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { Spin, Result, Button } from 'antd';
 import { LoadingOutlined, ReloadOutlined } from '@ant-design/icons';
+import Watermark from './Watermark.jsx';
+import { useAuth } from '../hooks/useAuth.jsx';
 
 export default function PageImage({
   src,
@@ -17,8 +20,10 @@ export default function PageImage({
   pageNumber,
   onSwipeLeft,
   onSwipeRight,
-  onRetry
+  onRetry,
+  tabHidden = false
 }) {
+  const auth = useAuth();
   const touchStartRef = useRef(null);
   const [scale, setScale] = useState(1);
 
@@ -36,7 +41,7 @@ export default function PageImage({
 
   function onTouchEnd(e) {
     if (!touchStartRef.current) return;
-    if (scale > 1.1) return;   // Don't swipe-navigate while zoomed
+    if (scale > 1.1) return;
 
     const start = touchStartRef.current;
     const touch = e.changedTouches[0];
@@ -44,15 +49,14 @@ export default function PageImage({
     const dy = touch.clientY - start.y;
     const dt = Date.now() - start.time;
 
-    // Must be horizontal + fast + significant
     if (Math.abs(dx) < 50) return;
     if (Math.abs(dx) < Math.abs(dy) * 1.5) return;
     if (dt > 500) return;
 
     if (dx > 0) {
-      onSwipeRight && onSwipeRight();   // swipe right → previous
+      onSwipeRight && onSwipeRight();
     } else {
-      onSwipeLeft && onSwipeLeft();     // swipe left → next
+      onSwipeLeft && onSwipeLeft();
     }
     touchStartRef.current = null;
   }
@@ -78,8 +82,8 @@ export default function PageImage({
     return (
       <div style={{ ...containerStyle, justifyContent: 'center', alignItems: 'center' }}>
         <Spin
-          indicator={<LoadingOutlined style={{ fontSize: 36, color: '#1e3a5f' }} spin />}
-          tip={`กำลังโหลดหน้า ${pageNumber}...`}
+          indicator={<LoadingOutlined style={{ fontSize: 36, color: '#fff' }} spin />}
+          tip={<span style={{ color: '#fff' }}>กำลังโหลดหน้า {pageNumber}...</span>}
         />
       </div>
     );
@@ -87,7 +91,11 @@ export default function PageImage({
 
   return (
     <div
-      style={containerStyle}
+      style={{
+        ...containerStyle,
+        filter: tabHidden ? 'blur(20px)' : 'none',
+        transition: 'filter 200ms ease'
+      }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
@@ -105,17 +113,38 @@ export default function PageImage({
       >
         <TransformComponent
           wrapperStyle={{ width: '100%', height: '100%' }}
-          contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          contentStyle={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative'
+          }}
         >
-          <img
-            src={src}
-            alt={`Page ${pageNumber}`}
-            style={imgStyle}
-            draggable={false}
-            onContextMenu={(e) => e.preventDefault()}
-          />
+          <div style={imgWrapperStyle}>
+            <img
+              src={src}
+              alt={`Page ${pageNumber}`}
+              style={imgStyle}
+              draggable={false}
+              onContextMenu={(e) => e.preventDefault()}
+            />
+            <Watermark user={auth.user} profile={auth.profile} />
+          </div>
         </TransformComponent>
       </TransformWrapper>
+
+      {tabHidden && (
+        <div style={hiddenOverlay}>
+          <div style={{ color: '#fff', fontSize: 16, fontWeight: 600 }}>
+            🔒 ภาพถูกซ่อนชั่วคราว
+          </div>
+          <div style={{ color: '#cbd5e1', fontSize: 13, marginTop: 8 }}>
+            กลับมาที่หน้านี้เพื่อดูต่อ
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -130,7 +159,15 @@ const containerStyle = {
   position: 'relative'
 };
 
+const imgWrapperStyle = {
+  position: 'relative',
+  display: 'inline-block',
+  maxWidth: '100%',
+  maxHeight: '100%'
+};
+
 const imgStyle = {
+  display: 'block',
   maxWidth: '100%',
   maxHeight: '100%',
   width: 'auto',
@@ -140,4 +177,16 @@ const imgStyle = {
   WebkitUserSelect: 'none',
   WebkitUserDrag: 'none',
   pointerEvents: 'auto'
+};
+
+const hiddenOverlay = {
+  position: 'absolute',
+  inset: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'rgba(0,0,0,0.7)',
+  zIndex: 100,
+  backdropFilter: 'blur(10px)'
 };

@@ -1,16 +1,9 @@
 /**
- * Reader — main page viewer
+ * Reader — Phase 4: PDF reader with watermark + anti-capture
  *
- * Layout:
- *   ┌────────────────────────┐
- *   │ Top bar                 │
- *   ├────────────────────────┤
- *   │                         │
- *   │  PageImage (zoom)       │
- *   │                         │
- *   ├────────────────────────┤
- *   │ Bottom controls         │
- *   └────────────────────────┘
+ * เพิ่มจาก Phase 3:
+ *  - AntiCaptureNotice banner (ครั้งแรก)
+ *  - Forward tabHidden state ไปยัง PageImage เพื่อ blur
  */
 
 import { useState } from 'react';
@@ -18,8 +11,10 @@ import { Button, Tag, Typography } from 'antd';
 import { LeftOutlined, RightOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigation } from '../hooks/useNavigation.jsx';
 import { usePageLoader } from '../hooks/usePageLoader.jsx';
+import { useAntiCapture } from '../hooks/useAntiCapture.jsx';
 import PageImage from '../components/PageImage.jsx';
 import PageJumpModal from '../components/PageJumpModal.jsx';
+import AntiCaptureNotice from '../components/AntiCaptureNotice.jsx';
 
 const { Text } = Typography;
 
@@ -29,6 +24,17 @@ export default function Reader() {
   const page = nav.currentPage;
   const totalPages = doc?.page_count || 0;
   const [jumpOpen, setJumpOpen] = useState(false);
+
+  // Anti-capture defenses (active throughout Reader session)
+  const { tabHidden } = useAntiCapture({
+    enabled: true,
+    onSuspectActivity: (event) => {
+      // Phase 6 will send these to backend
+      if (event.type !== 'tab_visible') {
+        console.warn('[anti-capture]', event);
+      }
+    }
+  });
 
   const { data, loading, error } = usePageLoader(doc?.id, page, totalPages);
 
@@ -67,6 +73,9 @@ export default function Reader() {
         </Text>
       </div>
 
+      {/* Notice banner (above image, dismissable) */}
+      <AntiCaptureNotice />
+
       {/* Image area */}
       <PageImage
         src={data}
@@ -76,6 +85,7 @@ export default function Reader() {
         onSwipeLeft={isLast ? null : nav.nextPage}
         onSwipeRight={isFirst ? null : nav.prevPage}
         onRetry={() => nav.goToPage(page)}
+        tabHidden={tabHidden}
       />
 
       {/* Bottom controls */}
