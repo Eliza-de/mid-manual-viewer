@@ -1,9 +1,10 @@
 /**
- * Reader — Phase 4: PDF reader with watermark + anti-capture
+ * Reader — Phase 4.3
  *
- * เพิ่มจาก Phase 3:
- *  - AntiCaptureNotice banner (ครั้งแรก)
- *  - Forward tabHidden state ไปยัง PageImage เพื่อ blur
+ * เต็มจอแบบ full LIFF window:
+ *   - ใช้ 100dvh (dynamic viewport height) — รองรับ mobile keyboard/URL bar
+ *   - position: fixed กิน inset 0
+ *   - อาจยังเหลือ LIFF native header — แก้ใน LINE Console (size = Full)
  */
 
 import { useState } from 'react';
@@ -25,11 +26,9 @@ export default function Reader() {
   const totalPages = doc?.page_count || 0;
   const [jumpOpen, setJumpOpen] = useState(false);
 
-  // Anti-capture defenses (active throughout Reader session)
   const { tabHidden } = useAntiCapture({
     enabled: true,
     onSuspectActivity: (event) => {
-      // Phase 6 will send these to backend
       if (event.type !== 'tab_visible') {
         console.warn('[anti-capture]', event);
       }
@@ -73,10 +72,8 @@ export default function Reader() {
         </Text>
       </div>
 
-      {/* Notice banner (above image, dismissable) */}
       <AntiCaptureNotice />
 
-      {/* Image area */}
       <PageImage
         src={data}
         loading={loading}
@@ -88,7 +85,6 @@ export default function Reader() {
         tabHidden={tabHidden}
       />
 
-      {/* Bottom controls */}
       <div style={bottomBarStyle}>
         <Button
           icon={<LeftOutlined />}
@@ -132,11 +128,17 @@ export default function Reader() {
 
 const containerStyle = {
   position: 'fixed',
-  inset: 0,
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  width: '100vw',
+  height: '100dvh',          // dynamic viewport — handle mobile browser bars
   display: 'flex',
   flexDirection: 'column',
   background: '#1f2937',
-  zIndex: 100
+  zIndex: 1000,              // เหนือ AppLayout
+  paddingTop: 'env(safe-area-inset-top)',  // notch handling
 };
 
 const topBarStyle = {

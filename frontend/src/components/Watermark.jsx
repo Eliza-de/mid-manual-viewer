@@ -1,17 +1,18 @@
 /**
- * Watermark v3 — Pure React render, no SVG data URI
+ * Watermark v4 — ลดความหนาแน่น เพื่ออ่าน content ได้
  *
- * Phase 4.2 fix:
- *   - Render text directly via repeated <div>s in absolute positions
- *   - No SVG, no data URI, no blend-mode → works everywhere
- *   - Visible deterrent text + screenshot will capture it
+ * Phase 4.3 fix:
+ *   - ลดจำนวน rows × cols จาก 12×4 → 6×2
+ *   - opacity 25% (จาก 55%)
+ *   - font-weight 500 (จาก 700)
+ *   - เพิ่ม spacing ระหว่าง text
  */
 
 import { useState, useEffect, useMemo } from 'react';
 import './Watermark.css';
 
-const ROW_HEIGHT = 110;
-const STAGGER = 100;
+const ROW_HEIGHT = 200;     // เพิ่มจาก 110 → 200 (ห่างกว่า)
+const STAGGER = 200;        // stagger เยอะขึ้น
 
 export default function Watermark({ user, profile }) {
   const [now, setNow] = useState(new Date());
@@ -30,9 +31,9 @@ export default function Watermark({ user, profile }) {
     return `${name} · ${last4} · ${dept} · ${time}`;
   }, [user, profile, now]);
 
-  // Build a 2D grid of repeating text — fixed count covers most screens
+  // 6 rows × 2 texts = 12 instances (เดิม 12×4 = 48)
   const rows = [];
-  for (let r = 0; r < 12; r++) {
+  for (let r = 0; r < 6; r++) {
     const isOdd = r % 2 === 1;
     rows.push(
       <div
@@ -43,8 +44,6 @@ export default function Watermark({ user, profile }) {
           left: isOdd ? `${STAGGER}px` : '0px'
         }}
       >
-        <span className="wm-text">{text}</span>
-        <span className="wm-text">{text}</span>
         <span className="wm-text">{text}</span>
         <span className="wm-text">{text}</span>
       </div>

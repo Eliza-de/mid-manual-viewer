@@ -1,4 +1,4 @@
-/* Watermark v3 — pure CSS, no blend-mode, no SVG */
+/* Watermark v4 — บางลง อ่านได้ชัด */
 
 .wm-overlay {
   position: absolute;
@@ -10,10 +10,8 @@
   -webkit-user-select: none;
 }
 
-/* Rotated container — hosts all rows */
 .wm-rotator {
   position: absolute;
-  /* Make rotator larger than viewport so rotation doesn't leave corners empty */
   top: -200px;
   left: -200px;
   right: -200px;
@@ -26,21 +24,19 @@
   position: absolute;
   white-space: nowrap;
   display: flex;
-  gap: 60px;
+  gap: 200px;        /* ระยะห่างระหว่าง text เพิ่มขึ้น */
 }
 
 .wm-text {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Sukhumvit Set", "IBM Plex Sans Thai", sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: rgba(20, 30, 50, 0.55);
-  /* Multi-shadow stroke effect — visible on light AND dark backgrounds */
+  font-size: 13px;
+  font-weight: 500;                       /* ลดจาก 700 → 500 */
+  color: rgba(20, 30, 50, 0.25);          /* opacity 25% (เดิม 55%) */
   text-shadow:
-    -1px -1px 0 rgba(255, 255, 255, 0.6),
-     1px -1px 0 rgba(255, 255, 255, 0.6),
-    -1px  1px 0 rgba(255, 255, 255, 0.6),
-     1px  1px 0 rgba(255, 255, 255, 0.6),
-     0    0   3px rgba(255, 255, 255, 0.4);
+    -1px -1px 0 rgba(255, 255, 255, 0.3),
+     1px -1px 0 rgba(255, 255, 255, 0.3),
+    -1px  1px 0 rgba(255, 255, 255, 0.3),
+     1px  1px 0 rgba(255, 255, 255, 0.3);
   letter-spacing: 0.2px;
   user-select: none;
   -webkit-user-select: none;
