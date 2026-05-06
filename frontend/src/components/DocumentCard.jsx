@@ -1,10 +1,11 @@
 /**
- * DocumentCard — single document tile in the list
+ * DocumentCard — single document tile (rebranded mint theme)
  */
 
 import { Card, Tag, Typography, Space } from 'antd';
 import { FileTextOutlined, RightOutlined } from '@ant-design/icons';
-import { relativeTime, truncate } from '../utils/format.js';
+import { relativeTime } from '../utils/format.js';
+import { COLORS } from '../brand.js';
 
 const { Text, Paragraph } = Typography;
 
@@ -19,25 +20,28 @@ export default function DocumentCard({ doc, onClick }) {
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Form code as Tag */}
           {doc.form_code && (
-            <Tag color="blue" style={{ marginBottom: 6, fontWeight: 600 }}>
+            <Tag style={{
+              marginBottom: 6,
+              fontWeight: 600,
+              background: COLORS.primary,
+              color: '#fff',
+              borderColor: COLORS.primary
+            }}>
               {doc.form_code}
             </Tag>
           )}
 
-          {/* Title */}
           <div style={{
             fontWeight: 600,
             fontSize: 15,
-            color: '#1e3a5f',
+            color: COLORS.primary,
             marginBottom: 4,
             lineHeight: 1.3
           }}>
             {doc.title}
           </div>
 
-          {/* Description */}
           {doc.description && (
             <Paragraph
               type="secondary"
@@ -48,7 +52,6 @@ export default function DocumentCard({ doc, onClick }) {
             </Paragraph>
           )}
 
-          {/* Meta: page count + updated */}
           <Space size={12} style={{ fontSize: 11, color: '#94a3b8' }}>
             <span>
               <FileTextOutlined style={{ marginRight: 4 }} />
@@ -62,7 +65,6 @@ export default function DocumentCard({ doc, onClick }) {
           </Space>
         </div>
 
-        {/* Chevron */}
         <RightOutlined style={{ color: '#cbd5e1', fontSize: 14, marginTop: 4 }} />
       </div>
     </Card>

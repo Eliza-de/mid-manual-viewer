@@ -1,5 +1,5 @@
 /**
- * Home — Phase 7: route admin pages (dashboard, users, docs, logs, upload)
+ * Home — main router
  */
 
 import { useState } from 'react';
@@ -25,7 +25,6 @@ function HomeInner() {
   const nav = useNavigation();
   const [category, setCategory] = useState('topic');
 
-  // Admin mode takes priority
   if (nav.adminMode) {
     if (nav.adminPage === 'upload') return <DocumentUpload />;
     if (nav.adminPage === 'users') return <UserManagement />;
@@ -34,12 +33,8 @@ function HomeInner() {
     return <AdminDashboard />;
   }
 
-  // Reader
-  if (nav.isReading) {
-    return <Reader />;
-  }
+  if (nav.isReading) return <Reader />;
 
-  // Default: category browser
   return (
     <AppLayout category={category} onCategoryChange={setCategory}>
       <CategoryPage category={category} />

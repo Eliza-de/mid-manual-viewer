@@ -1,30 +1,26 @@
 /**
- * Register — First-time user registration form
- *
- * Collects: department, employee_code (optional)
- * Calls register endpoint → next step depends on response:
- *   - autoApproved (bootstrap admin) → needsPin
- *   - status: pending → PendingApproval screen
+ * Register — rebranded
  */
 
 import { useState } from 'react';
-import { Card, Form, Input, Button, Typography, Avatar, Space, Alert, Tag } from 'antd';
+import { Card, Form, Input, Button, Typography, Alert, Space, Avatar } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { register } from '../api/auth.js';
 import { getIdToken } from '../api/liff.js';
+import { BRAND, COLORS } from '../brand.js';
 
 const { Title, Text, Paragraph } = Typography;
 
 export default function Register() {
   const auth = useAuth();
   const [submitting, setSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(null);
+  const [error, setError] = useState(null);
   const [form] = Form.useForm();
 
-  async function onSubmit(values) {
+  async function handleSubmit(values) {
     setSubmitting(true);
-    setErrorMsg(null);
+    setError(null);
     try {
       const idToken = getIdToken();
       const r = await register(idToken, {
@@ -32,14 +28,13 @@ export default function Register() {
         employee_code: values.employee_code || ''
       });
       if (!r.ok) {
-        setErrorMsg(r.error);
+        setError(r.error);
         setSubmitting(false);
         return;
       }
-      // Refresh auth state — will route to PinSetup or PendingApproval
       await auth.refresh();
     } catch (err) {
-      setErrorMsg(err.message || 'เกิดข้อผิดพลาด');
+      setError(err.message || 'เกิดข้อผิดพลาด');
       setSubmitting(false);
     }
   }
@@ -49,18 +44,17 @@ export default function Register() {
       <Card>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <div style={{ textAlign: 'center' }}>
-            <Title level={3} style={{ margin: 0, color: '#1e3a5f' }}>
-              ลงทะเบียน
-            </Title>
-            <Text type="secondary">MID Manual Viewer</Text>
+            <Title level={3} style={{ margin: 0, color: COLORS.primary }}>ลงทะเบียน</Title>
+            <Text type="secondary">{BRAND.appName}</Text>
           </div>
 
           {auth.profile && (
-            <Card size="small" style={{ background: '#f8fafc' }}>
+            <Card size="small" style={{ background: COLORS.bgSoft, border: `1px solid ${COLORS.brandLight}` }}>
               <Space>
                 {auth.profile.pictureUrl
                   ? <Avatar src={auth.profile.pictureUrl} size={48} />
-                  : <Avatar icon={<UserOutlined />} size={48} />}
+                  : <Avatar icon={<UserOutlined />} size={48} />
+                }
                 <div>
                   <div style={{ fontWeight: 600 }}>{auth.profile.displayName}</div>
                   <Text type="secondary" style={{ fontSize: 11 }}>
@@ -75,16 +69,11 @@ export default function Register() {
             กรุณากรอกข้อมูลเพื่อขอเข้าใช้งานระบบ admin จะพิจารณาอนุมัติภายหลัง
           </Paragraph>
 
-          {errorMsg && (
-            <Alert type="error" showIcon message={errorMsg} closable onClose={() => setErrorMsg(null)} />
+          {error && (
+            <Alert type="error" showIcon message={error} closable onClose={() => setError(null)} />
           )}
 
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={onSubmit}
-            requiredMark={false}
-          >
+          <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
             <Form.Item
               label="แผนก"
               name="department"
@@ -97,7 +86,7 @@ export default function Register() {
             </Form.Item>
 
             <Form.Item
-              label={<span>รหัสพนักงาน <Tag style={{ marginLeft: 4 }}>ไม่บังคับ</Tag></span>}
+              label={<span>รหัสพนักงาน <Text type="secondary" style={{ marginLeft: 4 }}>(ไม่บังคับ)</Text></span>}
               name="employee_code"
               rules={[{ max: 50, message: 'รหัสพนักงานยาวเกินไป' }]}
             >
@@ -111,6 +100,7 @@ export default function Register() {
                 block
                 loading={submitting}
                 size="large"
+                style={{ background: COLORS.primary, borderColor: COLORS.primary }}
               >
                 ลงทะเบียน
               </Button>
@@ -118,7 +108,7 @@ export default function Register() {
           </Form>
 
           <Text type="secondary" style={{ fontSize: 11, textAlign: 'center', display: 'block' }}>
-            Vibharam Laemchabang Hospital · IT Department
+            {BRAND.companyTH} · IT Department
           </Text>
         </Space>
       </Card>

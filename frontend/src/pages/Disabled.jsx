@@ -1,9 +1,10 @@
 /**
- * Disabled — Shown when user account is disabled
+ * Disabled — account disabled (rebranded)
  */
 
 import { Card, Result, Typography } from 'antd';
 import { StopOutlined } from '@ant-design/icons';
+import { BRAND } from '../brand.js';
 
 const { Text } = Typography;
 
@@ -17,7 +18,7 @@ export default function Disabled() {
           subTitle="บัญชีของคุณไม่สามารถใช้งานได้ในขณะนี้ กรุณาติดต่อ admin"
         />
         <Text type="secondary" style={{ fontSize: 12, textAlign: 'center', display: 'block' }}>
-          IT Department · Vibharam Laemchabang Hospital
+          IT Department · {BRAND.companyTH}
         </Text>
       </Card>
     </div>

@@ -1,5 +1,5 @@
 /**
- * DocumentManagement — admin document edit/archive
+ * DocumentManagement — admin document edit/archive (rebranded)
  */
 
 import { useEffect, useState } from 'react';
@@ -8,13 +8,8 @@ import {
   Radio, Typography, Dropdown, Empty, Spin
 } from 'antd';
 import {
-  ArrowLeftOutlined,
-  FileTextOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  ReloadOutlined,
-  MoreOutlined,
-  UndoOutlined
+  ArrowLeftOutlined, FileTextOutlined, EditOutlined, DeleteOutlined,
+  ReloadOutlined, MoreOutlined, UndoOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useNavigation } from '../../hooks/useNavigation.jsx';
@@ -22,6 +17,7 @@ import { getIdToken } from '../../api/liff.js';
 import {
   listAllDocuments, updateDocument, archiveDocument, restoreDocument
 } from '../../api/admin.js';
+import { COLORS } from '../../brand.js';
 
 const { Text } = Typography;
 
@@ -37,7 +33,6 @@ export default function DocumentManagement() {
   const [tab, setTab] = useState('active');
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(false);
-
   const [editing, setEditing] = useState(null);
   const [editForm] = Form.useForm();
 
@@ -45,14 +40,10 @@ export default function DocumentManagement() {
     if (!auth.session) return;
     setLoading(true);
     try {
-      const idToken = getIdToken();
-      const r = await listAllDocuments(idToken, auth.session.token, tab);
-      if (r.ok) {
-        setDocs(r.documents);
-      } else {
-        if (r.needsLogin) auth.logout();
-        else message.error(r.error || 'โหลดข้อมูลไม่สำเร็จ');
-      }
+      const r = await listAllDocuments(getIdToken(), auth.session.token, tab);
+      if (r.ok) setDocs(r.documents);
+      else if (r.needsLogin) auth.logout();
+      else message.error(r.error || 'โหลดข้อมูลไม่สำเร็จ');
     } catch (err) {
       message.error(err.message || 'เกิดข้อผิดพลาด');
     } finally {
@@ -60,9 +51,7 @@ export default function DocumentManagement() {
     }
   }
 
-  useEffect(() => {
-    load();
-  }, [tab]);
+  useEffect(() => { load(); }, [tab]);
 
   function openEdit(doc) {
     setEditing(doc);
@@ -76,46 +65,28 @@ export default function DocumentManagement() {
   }
 
   async function handleEditSubmit(values) {
-    const idToken = getIdToken();
-    const r = await updateDocument(idToken, auth.session.token, editing.id, values);
-    if (r.ok) {
-      message.success('บันทึกสำเร็จ');
-      setEditing(null);
-      load();
-    } else {
-      message.error(r.error || 'ไม่สำเร็จ');
-    }
+    const r = await updateDocument(getIdToken(), auth.session.token, editing.id, values);
+    if (r.ok) { message.success('บันทึกสำเร็จ'); setEditing(null); load(); }
+    else message.error(r.error || 'ไม่สำเร็จ');
   }
 
   async function handleArchive(doc) {
     Modal.confirm({
       title: 'Archive เอกสาร',
       content: `Archive "${doc.title}"? เอกสารจะไม่แสดงในรายการของผู้ใช้`,
-      okText: 'Archive',
-      okButtonProps: { danger: true },
-      cancelText: 'ยกเลิก',
+      okText: 'Archive', okButtonProps: { danger: true }, cancelText: 'ยกเลิก',
       async onOk() {
-        const idToken = getIdToken();
-        const r = await archiveDocument(idToken, auth.session.token, doc.id);
-        if (r.ok) {
-          message.success('Archive สำเร็จ');
-          load();
-        } else {
-          message.error(r.error || 'ไม่สำเร็จ');
-        }
+        const r = await archiveDocument(getIdToken(), auth.session.token, doc.id);
+        if (r.ok) { message.success('Archive สำเร็จ'); load(); }
+        else message.error(r.error || 'ไม่สำเร็จ');
       }
     });
   }
 
   async function handleRestore(doc) {
-    const idToken = getIdToken();
-    const r = await restoreDocument(idToken, auth.session.token, doc.id);
-    if (r.ok) {
-      message.success('Restore สำเร็จ');
-      load();
-    } else {
-      message.error(r.error || 'ไม่สำเร็จ');
-    }
+    const r = await restoreDocument(getIdToken(), auth.session.token, doc.id);
+    if (r.ok) { message.success('Restore สำเร็จ'); load(); }
+    else message.error(r.error || 'ไม่สำเร็จ');
   }
 
   function buildActionMenu(doc) {
@@ -134,30 +105,13 @@ export default function DocumentManagement() {
   return (
     <div style={pageStyle}>
       <div style={topBarStyle}>
-        <Button
-          type="text"
-          icon={<ArrowLeftOutlined />}
-          onClick={() => nav.goAdminPage('dashboard')}
-          style={{ color: '#fff' }}
-        >
-          กลับ
-        </Button>
-        <div style={{ color: '#fff', fontWeight: 600, fontSize: 16 }}>
-          จัดการเอกสาร
-        </div>
-        <Button
-          type="text"
-          icon={<ReloadOutlined spin={loading} />}
-          onClick={load}
-          style={{ color: '#fff' }}
-        />
+        <Button type="text" icon={<ArrowLeftOutlined />}
+          onClick={() => nav.goAdminPage('dashboard')} style={{ color: '#fff' }}>กลับ</Button>
+        <div style={{ color: '#fff', fontWeight: 600, fontSize: 16 }}>จัดการเอกสาร</div>
+        <Button type="text" icon={<ReloadOutlined spin={loading} />} onClick={load} style={{ color: '#fff' }} />
       </div>
 
-      <Tabs
-        activeKey={tab}
-        onChange={setTab}
-        centered
-        style={{ background: '#fff' }}
+      <Tabs activeKey={tab} onChange={setTab} centered style={{ background: '#fff' }}
         items={[
           { key: 'active', label: 'ใช้งาน' },
           { key: 'archived', label: 'Archived' }
@@ -167,9 +121,7 @@ export default function DocumentManagement() {
       <div style={contentStyle}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
           {loading && docs.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40 }}>
-              <Spin />
-            </div>
+            <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
           ) : docs.length === 0 ? (
             <Empty description="ไม่มีเอกสาร" style={{ marginTop: 40 }} />
           ) : (
@@ -178,14 +130,14 @@ export default function DocumentManagement() {
               renderItem={doc => (
                 <Card size="small" style={{ marginBottom: 8 }} styles={{ body: { padding: 12 } }}>
                   <div style={{ display: 'flex', gap: 10 }}>
-                    <FileTextOutlined style={{ fontSize: 24, color: '#1e3a5f', marginTop: 2 }} />
+                    <FileTextOutlined style={{ fontSize: 24, color: COLORS.primary, marginTop: 2 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {doc.form_code && (
-                        <Tag color="blue" style={{ fontSize: 10, marginBottom: 4 }}>
+                        <Tag color={COLORS.primary} style={{ fontSize: 10, marginBottom: 4, color: '#fff', borderColor: COLORS.primary }}>
                           {doc.form_code}
                         </Tag>
                       )}
-                      <div style={{ fontWeight: 600, fontSize: 14, color: '#1e3a5f', lineHeight: 1.3 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: COLORS.primary, lineHeight: 1.3 }}>
                         {doc.title}
                       </div>
                       <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
@@ -208,15 +160,9 @@ export default function DocumentManagement() {
         </div>
       </div>
 
-      {/* Edit Modal */}
-      <Modal
-        title="แก้ไขเอกสาร"
-        open={!!editing}
-        onCancel={() => setEditing(null)}
-        onOk={() => editForm.submit()}
-        okText="บันทึก"
-        cancelText="ยกเลิก"
-      >
+      <Modal title="แก้ไขเอกสาร" open={!!editing} onCancel={() => setEditing(null)}
+        onOk={() => editForm.submit()} okText="บันทึก" cancelText="ยกเลิก"
+        okButtonProps={{ style: { background: COLORS.primary, borderColor: COLORS.primary } }}>
         <Form form={editForm} layout="vertical" onFinish={handleEditSubmit} requiredMark={false}>
           <Form.Item label="ชื่อเอกสาร" name="title" rules={[{ required: true, message: 'กรุณาระบุชื่อ' }]}>
             <Input maxLength={200} />
@@ -246,15 +192,13 @@ export default function DocumentManagement() {
 const pageStyle = {
   position: 'fixed', inset: 0,
   display: 'flex', flexDirection: 'column',
-  background: '#f5f7fa', zIndex: 100
+  background: COLORS.bgSoft, zIndex: 100
 };
 
 const topBarStyle = {
   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  padding: '0 12px', background: '#1e3a5f',
+  padding: '0 12px', background: COLORS.primary,
   height: 52, flexShrink: 0
 };
 
-const contentStyle = {
-  padding: 12, flex: 1, overflowY: 'auto'
-};
+const contentStyle = { padding: 12, flex: 1, overflowY: 'auto' };

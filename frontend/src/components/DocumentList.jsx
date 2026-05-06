@@ -1,5 +1,8 @@
 /**
- * DocumentList — renders list of documents with skeleton/empty/error states
+ * DocumentList — renders list of documents (rebranded mint theme)
+ *
+ * Same structure as Phase 2 — colors only changed.
+ * DocumentCard remains in separate file (../components/DocumentCard.jsx).
  */
 
 import { Card, Skeleton, Result, Button, Empty } from 'antd';
@@ -7,7 +10,6 @@ import { ReloadOutlined, InboxOutlined } from '@ant-design/icons';
 import DocumentCard from './DocumentCard.jsx';
 
 export default function DocumentList({ docs, loading, error, onRefetch, onSelect }) {
-  // Loading state
   if (loading && (!docs || docs.length === 0)) {
     return (
       <div>
@@ -20,7 +22,6 @@ export default function DocumentList({ docs, loading, error, onRefetch, onSelect
     );
   }
 
-  // Error state
   if (error) {
     return (
       <Result
@@ -36,7 +37,6 @@ export default function DocumentList({ docs, loading, error, onRefetch, onSelect
     );
   }
 
-  // Empty state
   if (!docs || docs.length === 0) {
     return (
       <Empty
@@ -47,7 +47,6 @@ export default function DocumentList({ docs, loading, error, onRefetch, onSelect
     );
   }
 
-  // Has data
   return (
     <div>
       {docs.map(doc => (

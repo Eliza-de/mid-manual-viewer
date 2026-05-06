@@ -1,19 +1,17 @@
 /**
- * AppLayout — Phase 5: เพิ่ม Admin menu สำหรับ user ที่ is_admin=true
+ * AppLayout — main layout with header + tabs (rebranded)
  */
 
 import { Layout, Avatar, Dropdown, Tag } from 'antd';
 import { TabBar } from 'antd-mobile';
 import {
-  UserOutlined,
-  LogoutOutlined,
-  BookOutlined,
-  FileTextOutlined,
-  UnorderedListOutlined,
+  UserOutlined, LogoutOutlined,
+  BookOutlined, FileTextOutlined, UnorderedListOutlined,
   SafetyCertificateOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useNavigation } from '../hooks/useNavigation.jsx';
+import { BRAND, COLORS } from '../brand.js';
 
 const { Header, Content, Footer } = Layout;
 
@@ -38,7 +36,6 @@ export default function AppLayout({ category, onCategoryChange, children }) {
       disabled: true
     },
     { type: 'divider' },
-    // Admin menu - แสดงเฉพาะ admin
     ...(auth.user?.isAdmin ? [{
       key: 'admin',
       icon: <SafetyCertificateOutlined />,
@@ -61,10 +58,20 @@ export default function AppLayout({ category, onCategoryChange, children }) {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh', background: '#f5f7fa' }}>
+    <Layout style={{ minHeight: '100vh', background: COLORS.bgSoft }}>
       <Header style={headerStyle}>
-        <div style={{ fontWeight: 600, color: '#1e3a5f', fontSize: 16 }}>
-          MID Manual
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={logoStyle}>
+            <span style={{ fontSize: 16 }}>📖</span>
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, color: COLORS.primary, fontSize: 15, lineHeight: 1.2 }}>
+              {BRAND.appName}
+            </div>
+            <div style={{ fontSize: 10, color: COLORS.primaryLight, lineHeight: 1.2 }}>
+              {BRAND.appTagline}
+            </div>
+          </div>
         </div>
         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
           <div style={{ cursor: 'pointer' }}>
@@ -100,10 +107,20 @@ const headerStyle = {
   justifyContent: 'space-between',
   height: 56,
   lineHeight: 'initial',
-  borderBottom: '1px solid #e2e8f0',
+  borderBottom: `1px solid ${COLORS.brandLight}`,
   position: 'sticky',
   top: 0,
   zIndex: 10
+};
+
+const logoStyle = {
+  width: 32,
+  height: 32,
+  borderRadius: 8,
+  background: COLORS.brand,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center'
 };
 
 const contentStyle = {
@@ -116,7 +133,7 @@ const contentStyle = {
 const footerStyle = {
   padding: 0,
   background: '#ffffff',
-  borderTop: '1px solid #e2e8f0',
+  borderTop: `1px solid ${COLORS.brandLight}`,
   position: 'sticky',
   bottom: 0,
   zIndex: 10
