@@ -1,9 +1,14 @@
 /**
- * PageImage — Phase 4: ภาพแสดงพร้อม Watermark overlay
+ * PageImage — Phase 4.1 fix
  *
- * เพิ่มจาก Phase 3:
- *  - Watermark overlay ภายใน TransformComponent
- *  - Blur effect เมื่อ tab hidden (ไม่บล็อกระดับ image — ทำที่ container)
+ * Watermark moved OUTSIDE TransformWrapper so it's always visible
+ * (doesn't get clipped or hidden when zoomed).
+ *
+ * Layout:
+ *   .wm-host (relative)
+ *     ├─ TransformWrapper (zoom/pan only the image)
+ *     │   └─ <img>
+ *     └─ Watermark (absolute overlay, always on top)
  */
 
 import { useState, useRef } from 'react';
@@ -99,6 +104,7 @@ export default function PageImage({
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
+      {/* Zoomable image only */}
       <TransformWrapper
         initialScale={1}
         minScale={1}
@@ -118,22 +124,21 @@ export default function PageImage({
             height: '100%',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative'
+            justifyContent: 'center'
           }}
         >
-          <div style={imgWrapperStyle}>
-            <img
-              src={src}
-              alt={`Page ${pageNumber}`}
-              style={imgStyle}
-              draggable={false}
-              onContextMenu={(e) => e.preventDefault()}
-            />
-            <Watermark user={auth.user} profile={auth.profile} />
-          </div>
+          <img
+            src={src}
+            alt={`Page ${pageNumber}`}
+            style={imgStyle}
+            draggable={false}
+            onContextMenu={(e) => e.preventDefault()}
+          />
         </TransformComponent>
       </TransformWrapper>
+
+      {/* Watermark overlay — sits on top of zoom area, NOT zoomed */}
+      <Watermark user={auth.user} profile={auth.profile} />
 
       {tabHidden && (
         <div style={hiddenOverlay}>
@@ -156,14 +161,7 @@ const containerStyle = {
   display: 'flex',
   background: '#1f2937',
   overflow: 'hidden',
-  position: 'relative'
-};
-
-const imgWrapperStyle = {
-  position: 'relative',
-  display: 'inline-block',
-  maxWidth: '100%',
-  maxHeight: '100%'
+  position: 'relative'  // สำคัญ! Watermark ใช้ inset: 0 ของตัวนี้
 };
 
 const imgStyle = {

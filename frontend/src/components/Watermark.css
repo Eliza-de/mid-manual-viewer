@@ -1,19 +1,20 @@
-/* Watermark overlay — sits above the image inside the zoom wrapper */
+/* Watermark overlay v2 — Phase 4.1 fix
+ *
+ * Changes from v1:
+ *   - Removed mix-blend-mode (unreliable on LIFF in-app browser)
+ *   - Use solid colored text with white stroke for contrast
+ *   - Stays inside .wm-host container
+ */
 
-.watermark-overlay {
+.wm-overlay {
   position: absolute;
   inset: 0;
-  pointer-events: none;       /* allow clicks/touches to pass through to the image */
-  z-index: 5;
+  pointer-events: none;
+  z-index: 50;
   background-repeat: repeat;
   background-position: 0 0;
-
-  /* Difference blend makes the watermark visible on both light and dark areas
-     and harder to remove with a single color mask */
-  mix-blend-mode: difference;
-
-  /* Prevent the overlay from being captured as a separate element by some tools */
   user-select: none;
   -webkit-user-select: none;
   -webkit-user-drag: none;
+  /* No blend mode — explicit color contrast handles visibility */
 }
