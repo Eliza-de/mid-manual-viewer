@@ -1,24 +1,28 @@
 /**
- * UserManagement — admin user management with search + filter (Phase 7 + 12)
+ * UserManagement — Phases 7 + 9 + 12
+ * Phase 9 NEW: multi-select + bulk approve/disable/enable
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Card, Button, List, Avatar, Tag, Tabs, Modal, message, Space,
-  Typography, Dropdown, Empty, Spin
+  Typography, Dropdown, Empty, Spin, Checkbox
 } from 'antd';
 import {
   ArrowLeftOutlined, UserOutlined, CheckOutlined, StopOutlined,
-  ReloadOutlined, MoreOutlined, KeyOutlined, CrownOutlined, PlayCircleOutlined
+  ReloadOutlined, MoreOutlined, KeyOutlined, CrownOutlined, PlayCircleOutlined,
+  CheckSquareOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useNavigation } from '../../hooks/useNavigation.jsx';
 import { getIdToken } from '../../api/liff.js';
 import {
   listUsers, listDepartments, approveUser, disableUser, enableUser,
-  toggleAdmin, resetUserPin
+  toggleAdmin, resetUserPin,
+  bulkApproveUsers, bulkDisableUsers, bulkEnableUsers
 } from '../../api/admin.js';
 import SearchBar from '../../components/SearchBar.jsx';
+import BulkActionBar from '../../components/BulkActionBar.jsx';
 import { COLORS } from '../../brand.js';
 
 const { Text } = Typography;
@@ -32,16 +36,20 @@ export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Multi-select state — Map from line_user_id → user object
+  const [selected, setSelected] = useState(new Map());
+  const selectedCount = selected.size;
+
+  const allSelected = users.length > 0 && users.every(u => selected.has(u.line_user_id));
+  const someSelected = users.some(u => selected.has(u.line_user_id));
 
   async function load() {
     if (!auth.session) return;
     setLoading(true);
     try {
-      const r = await listUsers(getIdToken(), auth.session.token, {
-        status: tab,
-        search,
-        department
-      });
+      const r = await listUsers(getIdToken(), auth.session.token, { status: tab, search, department });
       if (r.ok) setUsers(r.users);
       else if (r.needsLogin) auth.logout();
       else message.error(r.error || 'โหลดข้อมูลไม่สำเร็จ');
@@ -60,10 +68,34 @@ export default function UserManagement() {
     } catch {}
   }
 
-  // Reload on tab/search/department change
   useEffect(() => { load(); }, [tab, search, department]);
-  // Load departments once
   useEffect(() => { loadDepartments(); }, []);
+
+  // Reset selection when tab/filter changes
+  useEffect(() => { setSelected(new Map()); }, [tab, search, department]);
+
+  function toggleSelect(user) {
+    const m = new Map(selected);
+    if (m.has(user.line_user_id)) m.delete(user.line_user_id);
+    else m.set(user.line_user_id, user);
+    setSelected(m);
+  }
+
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelected(new Map());
+    } else {
+      const m = new Map();
+      // Skip self in bulk select (cannot bulk act on self)
+      const selfId = auth.session?.user?.lineUserId || auth.session?.lineUserId;
+      users.forEach(u => {
+        if (u.line_user_id !== selfId) m.set(u.line_user_id, u);
+      });
+      setSelected(m);
+    }
+  }
+
+  // ============ INDIVIDUAL ACTIONS ============
 
   async function handleApprove(user) {
     Modal.confirm({
@@ -125,6 +157,71 @@ export default function UserManagement() {
     });
   }
 
+  // ============ BULK ACTIONS (Phase 9) ============
+
+  async function runBulk(action, label, danger = false) {
+    const ids = Array.from(selected.keys());
+    if (ids.length === 0) return;
+
+    Modal.confirm({
+      title: `${label} (${ids.length} รายการ)`,
+      content: `ยืนยัน ${label} ผู้ใช้ ${ids.length} คน?`,
+      okText: 'ยืนยัน', okButtonProps: { danger }, cancelText: 'ยกเลิก',
+      async onOk() {
+        setBulkLoading(true);
+        try {
+          const r = await action(getIdToken(), auth.session.token, ids);
+          if (r.ok) {
+            const msg = `✅ สำเร็จ ${r.succeeded} รายการ` +
+              (r.failed_count > 0 ? ` · ⚠️ ผิดพลาด ${r.failed_count}` : '');
+            message.success(msg, 4);
+            setSelected(new Map());
+            load();
+          } else {
+            message.error(r.error || `${label}ไม่สำเร็จ`);
+          }
+        } catch (err) {
+          message.error(err.message || 'เกิดข้อผิดพลาด');
+        } finally {
+          setBulkLoading(false);
+        }
+      }
+    });
+  }
+
+  // Build bulk action list per tab
+  const bulkActions = useMemo(() => {
+    if (tab === 'pending') {
+      return [{
+        key: 'bulkApprove',
+        icon: <CheckOutlined />,
+        label: 'อนุมัติทั้งหมด',
+        onClick: () => runBulk(bulkApproveUsers, 'อนุมัติ'),
+        loading: bulkLoading
+      }];
+    }
+    if (tab === 'active') {
+      return [{
+        key: 'bulkDisable',
+        icon: <StopOutlined />,
+        label: 'ระงับทั้งหมด',
+        danger: true,
+        onClick: () => runBulk(bulkDisableUsers, 'ระงับ', true),
+        loading: bulkLoading
+      }];
+    }
+    if (tab === 'disabled') {
+      return [{
+        key: 'bulkEnable',
+        icon: <PlayCircleOutlined />,
+        label: 'เปิดใช้งานทั้งหมด',
+        onClick: () => runBulk(bulkEnableUsers, 'เปิดใช้งาน'),
+        loading: bulkLoading
+      }];
+    }
+    return [];
+  }, [tab, bulkLoading]);
+
   function buildActionMenu(user) {
     const items = [];
     if (user.status === 'pending') {
@@ -143,6 +240,7 @@ export default function UserManagement() {
   }
 
   const departmentOptions = departments.map(d => ({ label: d, value: d }));
+  const selfId = auth.session?.user?.lineUserId || auth.session?.lineUserId;
 
   return (
     <div style={pageStyle}>
@@ -161,7 +259,7 @@ export default function UserManagement() {
         ]}
       />
 
-      <div style={contentStyle}>
+      <div style={{ ...contentStyle, paddingBottom: selectedCount > 0 ? 80 : 12 }}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
           <SearchBar
             placeholder="ค้นหาชื่อ / แผนก / รหัสพนักงาน..."
@@ -186,58 +284,87 @@ export default function UserManagement() {
             />
           ) : (
             <>
-              <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
-                พบ {users.length} รายการ
-              </Text>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', marginBottom: 6 }}>
+                <Checkbox checked={allSelected} indeterminate={someSelected && !allSelected} onChange={toggleSelectAll}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    เลือกทั้งหมด ({users.length})
+                  </Text>
+                </Checkbox>
+              </div>
+
               <List
                 dataSource={users}
-                renderItem={user => (
-                  <Card size="small" style={{ marginBottom: 8 }} styles={{ body: { padding: 12 } }}>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      {user.picture_url
-                        ? <Avatar src={user.picture_url} size={40} />
-                        : <Avatar icon={<UserOutlined />} size={40} />
-                      }
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <Text strong style={{ fontSize: 14 }}>{user.display_name}</Text>
-                          {user.is_admin && <Tag color="gold" style={{ marginInlineEnd: 0 }}>Admin</Tag>}
+                renderItem={user => {
+                  const isSelf = user.line_user_id === selfId;
+                  const isChecked = selected.has(user.line_user_id);
+                  return (
+                    <Card
+                      size="small"
+                      style={{
+                        marginBottom: 8,
+                        borderColor: isChecked ? COLORS.primary : undefined,
+                        background: isChecked ? COLORS.bgSoft : undefined
+                      }}
+                      styles={{ body: { padding: 12 } }}
+                    >
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <Checkbox
+                          checked={isChecked}
+                          disabled={isSelf}
+                          onChange={() => toggleSelect(user)}
+                        />
+                        {user.picture_url
+                          ? <Avatar src={user.picture_url} size={40} />
+                          : <Avatar icon={<UserOutlined />} size={40} />
+                        }
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <Text strong style={{ fontSize: 14 }}>{user.display_name}</Text>
+                            {user.is_admin && <Tag color="gold" style={{ marginInlineEnd: 0 }}>Admin</Tag>}
+                            {isSelf && <Tag color="blue" style={{ marginInlineEnd: 0 }}>คุณ</Tag>}
+                          </div>
+                          <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                            {user.nickname || user.full_name || user.department}
+                            {user.employee_code && ` · ${user.employee_code}`}
+                          </Text>
+                          {user.last_login_at && tab === 'active' && (
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              last login: {new Date(user.last_login_at).toLocaleString('th-TH')}
+                            </Text>
+                          )}
+                          {user.created_at && tab === 'pending' && (
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              ลงทะเบียน: {new Date(user.created_at).toLocaleString('th-TH')}
+                            </Text>
+                          )}
                         </div>
-                        <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-                          {user.department}
-                          {user.employee_code && ` · ${user.employee_code}`}
-                        </Text>
-                        {user.last_login_at && tab === 'active' && (
-                          <Text type="secondary" style={{ fontSize: 11 }}>
-                            last login: {new Date(user.last_login_at).toLocaleString('th-TH')}
-                          </Text>
-                        )}
-                        {user.created_at && tab === 'pending' && (
-                          <Text type="secondary" style={{ fontSize: 11 }}>
-                            ลงทะเบียน: {new Date(user.created_at).toLocaleString('th-TH')}
-                          </Text>
-                        )}
+                        <Space>
+                          {user.status === 'pending' && (
+                            <Button type="primary" size="small" icon={<CheckOutlined />}
+                              onClick={() => handleApprove(user)}
+                              style={{ background: COLORS.primary, borderColor: COLORS.primary }}>
+                              อนุมัติ
+                            </Button>
+                          )}
+                          <Dropdown menu={{ items: buildActionMenu(user) }} placement="bottomRight" trigger={['click']}>
+                            <Button type="text" icon={<MoreOutlined />} />
+                          </Dropdown>
+                        </Space>
                       </div>
-                      <Space>
-                        {user.status === 'pending' && (
-                          <Button type="primary" size="small" icon={<CheckOutlined />}
-                            onClick={() => handleApprove(user)}
-                            style={{ background: COLORS.primary, borderColor: COLORS.primary }}>
-                            อนุมัติ
-                          </Button>
-                        )}
-                        <Dropdown menu={{ items: buildActionMenu(user) }} placement="bottomRight" trigger={['click']}>
-                          <Button type="text" icon={<MoreOutlined />} />
-                        </Dropdown>
-                      </Space>
-                    </div>
-                  </Card>
-                )}
+                    </Card>
+                  );
+                }}
               />
             </>
           )}
         </div>
       </div>
+
+      <BulkActionBar
+        selectedCount={selectedCount}
+        onClear={() => setSelected(new Map())}
+        actions={bulkActions}
+      />
     </div>
   );
 }

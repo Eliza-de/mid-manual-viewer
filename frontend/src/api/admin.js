@@ -1,15 +1,14 @@
 /**
- * Admin API client (Phase 7 + 8/12 + 11)
+ * Admin API client (Phases 7 + 8 + 9 + 11 + 12)
  */
 
 import { post } from './client.js';
 
-// ===== Document Upload (Phase D) =====
+// ===== Document Upload =====
 
 export async function createDocument(idToken, sessionToken, doc, pages) {
   return post('/api/admin/documents/create', {
-    idToken, sessionToken,
-    payload: { ...doc, pages }
+    idToken, sessionToken, payload: { ...doc, pages }
   });
 }
 
@@ -24,15 +23,13 @@ export async function replacePage(idToken, sessionToken, docId, pageNumber, base
 
 export async function appendPages(idToken, sessionToken, docId, pages) {
   return post('/api/admin/documents/appendPages', {
-    idToken, sessionToken,
-    payload: { id: docId, pages }
+    idToken, sessionToken, payload: { id: docId, pages }
   });
 }
 
 export async function replaceAllPages(idToken, sessionToken, docId, pages) {
   return post('/api/admin/documents/replaceAllPages', {
-    idToken, sessionToken,
-    payload: { id: docId, pages }
+    idToken, sessionToken, payload: { id: docId, pages }
   });
 }
 
@@ -70,6 +67,26 @@ export async function resetUserPin(idToken, sessionToken, lineUserId) {
   return post('/api/admin/users/resetPin', { idToken, sessionToken, payload: { line_user_id: lineUserId } });
 }
 
+// ===== Phase 9: Bulk Users =====
+
+export async function bulkApproveUsers(idToken, sessionToken, lineUserIds) {
+  return post('/api/admin/users/bulkApprove', {
+    idToken, sessionToken, payload: { line_user_ids: lineUserIds }
+  });
+}
+
+export async function bulkDisableUsers(idToken, sessionToken, lineUserIds, reason = '') {
+  return post('/api/admin/users/bulkDisable', {
+    idToken, sessionToken, payload: { line_user_ids: lineUserIds, reason }
+  });
+}
+
+export async function bulkEnableUsers(idToken, sessionToken, lineUserIds) {
+  return post('/api/admin/users/bulkEnable', {
+    idToken, sessionToken, payload: { line_user_ids: lineUserIds }
+  });
+}
+
 // ===== Documents =====
 
 export async function listAllDocuments(idToken, sessionToken, options = {}) {
@@ -90,6 +107,26 @@ export async function archiveDocument(idToken, sessionToken, id) {
 
 export async function restoreDocument(idToken, sessionToken, id) {
   return post('/api/admin/documents/restore', { idToken, sessionToken, payload: { id } });
+}
+
+// ===== Phase 9: Bulk Documents =====
+
+export async function bulkArchiveDocuments(idToken, sessionToken, documentIds) {
+  return post('/api/admin/documents/bulkArchive', {
+    idToken, sessionToken, payload: { document_ids: documentIds }
+  });
+}
+
+export async function bulkRestoreDocuments(idToken, sessionToken, documentIds) {
+  return post('/api/admin/documents/bulkRestore', {
+    idToken, sessionToken, payload: { document_ids: documentIds }
+  });
+}
+
+export async function bulkUpdateCategory(idToken, sessionToken, documentIds, category) {
+  return post('/api/admin/documents/bulkUpdateCategory', {
+    idToken, sessionToken, payload: { document_ids: documentIds, category }
+  });
 }
 
 // ===== Logs =====
