@@ -1,5 +1,12 @@
 /**
- * Register — rebranded
+ * Register — 3 simple text fields (rebranded)
+ *   - ชื่อ-สกุล
+ *   - ชื่อเล่น
+ *   - ตั้งค่ารหัสล็อกอิน (text ปกติ)
+ *
+ * After submit → status='pending' → goes to Pending page
+ *               (or 'active' if bootstrap admin → PinSetup)
+ * PIN is set in PinSetup page (unchanged from before).
  */
 
 import { useState } from 'react';
@@ -24,8 +31,9 @@ export default function Register() {
     try {
       const idToken = getIdToken();
       const r = await register(idToken, {
-        department: values.department,
-        employee_code: values.employee_code || ''
+        full_name: values.full_name,
+        nickname: values.nickname,
+        login_code: values.login_code
       });
       if (!r.ok) {
         setError(r.error);
@@ -66,7 +74,7 @@ export default function Register() {
           )}
 
           <Paragraph style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-            กรุณากรอกข้อมูลเพื่อขอเข้าใช้งานระบบ admin จะพิจารณาอนุมัติภายหลัง
+            กรุณากรอกข้อมูลเพื่อขอเข้าใช้งาน ระบบ admin จะพิจารณาอนุมัติภายหลัง
           </Paragraph>
 
           {error && (
@@ -75,22 +83,36 @@ export default function Register() {
 
           <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
             <Form.Item
-              label="แผนก"
-              name="department"
+              label="ชื่อ-สกุล"
+              name="full_name"
               rules={[
-                { required: true, message: 'กรุณาระบุแผนก' },
-                { max: 100, message: 'ชื่อแผนกยาวเกินไป' }
+                { required: true, message: 'กรุณาระบุชื่อ-สกุล' },
+                { max: 200, message: 'ชื่อ-สกุลยาวเกินไป' }
               ]}
             >
-              <Input placeholder="เช่น IT, OPD, Lab" autoComplete="off" />
+              <Input placeholder="ชื่อ-สกุล" autoComplete="off" />
             </Form.Item>
 
             <Form.Item
-              label={<span>รหัสพนักงาน <Text type="secondary" style={{ marginLeft: 4 }}>(ไม่บังคับ)</Text></span>}
-              name="employee_code"
-              rules={[{ max: 50, message: 'รหัสพนักงานยาวเกินไป' }]}
+              label="ชื่อเล่น"
+              name="nickname"
+              rules={[
+                { required: true, message: 'กรุณาระบุชื่อเล่น' },
+                { max: 100, message: 'ชื่อเล่นยาวเกินไป' }
+              ]}
             >
-              <Input placeholder="เช่น EMP001" autoComplete="off" />
+              <Input placeholder="ชื่อเล่น" autoComplete="off" />
+            </Form.Item>
+
+            <Form.Item
+              label="ตั้งค่ารหัสล็อกอิน"
+              name="login_code"
+              rules={[
+                { required: true, message: 'กรุณาระบุรหัสล็อกอิน' },
+                { max: 100, message: 'รหัสล็อกอินยาวเกินไป' }
+              ]}
+            >
+              <Input placeholder="รหัสล็อกอิน" autoComplete="off" />
             </Form.Item>
 
             <Form.Item style={{ marginBottom: 0, marginTop: 8 }}>
