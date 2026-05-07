@@ -1,5 +1,11 @@
 /**
- * LogViewer — view auth/audit/access logs (Phase 7 + Phase 10 export)
+ * LogViewer — VERSION 2 REDESIGN (Lean Buddy mint sage)
+ * BUILD: 2026-05-07-V2-LOGVIEWER
+ *
+ * Changes from V1:
+ *   - Mint gradient header (matches AdminDashboard V2)
+ *   - Glass icon buttons (back + download + reload)
+ *   - Cards rounded 12px
  */
 
 import { useEffect, useState } from 'react';
@@ -51,6 +57,12 @@ const AUDIT_ACTION_LABELS = {
 };
 
 export default function LogViewer() {
+  // V2 marker
+  if (typeof window !== 'undefined' && !window.__logviewer_v2_loaded) {
+    console.log('%c[LogViewer V2 LOADED]', 'background:#1F4D3F;color:#A4DFCB;padding:4px 8px;border-radius:4px');
+    window.__logviewer_v2_loaded = true;
+  }
+
   const auth = useAuth();
   const nav = useNavigation();
   const [tab, setTab] = useState('auth');
@@ -86,19 +98,27 @@ export default function LogViewer() {
 
   return (
     <div style={pageStyle}>
+      {/* Mint gradient header */}
       <div style={topBarStyle}>
-        <Button type="text" icon={<ArrowLeftOutlined />}
-          onClick={() => nav.goAdminPage('dashboard')} style={{ color: '#fff' }}>กลับ</Button>
-        <div style={{ color: '#fff', fontWeight: 600, fontSize: 16 }}>ดู Log</div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          <Button type="text" icon={<DownloadOutlined />} onClick={() => setExportOpen(true)}
-            style={{ color: '#fff' }} title="Export CSV" />
-          <Button type="text" icon={<ReloadOutlined spin={loading} />} onClick={() => load(page)}
-            style={{ color: '#fff' }} />
+        <div style={iconBtnStyle} onClick={() => nav.goAdminPage('dashboard')} role="button">
+          <ArrowLeftOutlined style={{ fontSize: 18 }} />
+        </div>
+        <div style={titleStyle}>ดู Log</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <div style={iconBtnStyle} onClick={() => setExportOpen(true)} role="button" title="Export CSV">
+            <DownloadOutlined style={{ fontSize: 18 }} />
+          </div>
+          <div style={iconBtnStyle} onClick={() => load(page)} role="button">
+            <ReloadOutlined spin={loading} style={{ fontSize: 18 }} />
+          </div>
         </div>
       </div>
 
-      <Tabs activeKey={tab} onChange={setTab} centered style={{ background: '#fff' }}
+      <Tabs
+        activeKey={tab}
+        onChange={setTab}
+        centered
+        style={{ background: '#fff' }}
         items={[
           { key: 'auth', label: <span><KeyOutlined /> Auth</span> },
           { key: 'audit', label: <span><CrownOutlined /> Audit</span> },
@@ -118,9 +138,14 @@ export default function LogViewer() {
               {tab === 'audit' && <AuditLogs logs={logs} />}
               {tab === 'access' && <AccessLogs logs={logs} />}
               <div style={{ textAlign: 'center', marginTop: 16 }}>
-                <Pagination current={page} pageSize={PAGE_SIZE}
+                <Pagination
+                  current={page}
+                  pageSize={PAGE_SIZE}
                   total={logs.length === PAGE_SIZE ? page * PAGE_SIZE + 1 : page * PAGE_SIZE}
-                  showSizeChanger={false} size="small" onChange={changePage} />
+                  showSizeChanger={false}
+                  size="small"
+                  onChange={changePage}
+                />
               </div>
             </>
           )}
@@ -140,7 +165,12 @@ function AuthLogs({ logs }) {
   return logs.map(l => {
     const eventInfo = AUTH_EVENT_LABELS[l.event] || { color: 'default', text: l.event };
     return (
-      <Card size="small" key={l.id} style={{ marginBottom: 6 }} styles={{ body: { padding: 10 } }}>
+      <Card
+        size="small"
+        key={l.id}
+        style={logCardStyle}
+        styles={{ body: { padding: 12 } }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -150,7 +180,7 @@ function AuthLogs({ logs }) {
               </Text>
             </div>
             {l.department && <Text type="secondary" style={{ fontSize: 11 }}>{l.department}</Text>}
-            {l.detail && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{l.detail}</div>}
+            {l.detail && <div style={{ fontSize: 11, color: '#6B8278', marginTop: 2 }}>{l.detail}</div>}
           </div>
           <Text type="secondary" style={{ fontSize: 10, whiteSpace: 'nowrap' }}>
             {new Date(l.created_at).toLocaleString('th-TH', {
@@ -170,7 +200,12 @@ function AuditLogs({ logs }) {
     try { meta = JSON.parse(l.meta_json || '{}'); } catch {}
 
     return (
-      <Card size="small" key={l.id} style={{ marginBottom: 6 }} styles={{ body: { padding: 10 } }}>
+      <Card
+        size="small"
+        key={l.id}
+        style={logCardStyle}
+        styles={{ body: { padding: 12 } }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <Tag color="purple" style={{ fontSize: 10, marginInlineEnd: 0 }}>{actionLabel}</Tag>
@@ -183,7 +218,7 @@ function AuditLogs({ logs }) {
               </Text>
             )}
             {meta && Object.keys(meta).length > 0 && (
-              <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, fontFamily: 'monospace' }}>
+              <div style={{ fontSize: 10, color: '#6B8278', marginTop: 2, fontFamily: 'monospace' }}>
                 {Object.entries(meta).slice(0, 3).map(([k, v]) =>
                   `${k}=${String(v).slice(0, 30)}`
                 ).join(' · ')}
@@ -203,7 +238,12 @@ function AuditLogs({ logs }) {
 
 function AccessLogs({ logs }) {
   return logs.map(l => (
-    <Card size="small" key={l.id} style={{ marginBottom: 6 }} styles={{ body: { padding: 10 } }}>
+    <Card
+      size="small"
+      key={l.id}
+      style={logCardStyle}
+      styles={{ body: { padding: 12 } }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 12 }}>
@@ -230,16 +270,59 @@ function AccessLogs({ logs }) {
   ));
 }
 
+// ===== Styles =====
+
 const pageStyle = {
-  position: 'fixed', inset: 0,
-  display: 'flex', flexDirection: 'column',
-  background: COLORS.bgSoft, zIndex: 100
+  position: 'fixed',
+  inset: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  background: COLORS.bgSoft,
+  zIndex: 100
 };
 
 const topBarStyle = {
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  padding: '0 12px', background: COLORS.primary,
-  height: 52, flexShrink: 0
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '0 14px',
+  background: `linear-gradient(135deg, #5DBFA0 0%, ${COLORS.primary} 100%)`,
+  height: 56,
+  flexShrink: 0,
+  boxShadow: '0 2px 8px rgba(31,77,63,0.12)'
 };
 
-const contentStyle = { padding: 12, flex: 1, overflowY: 'auto' };
+const iconBtnStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  background: 'rgba(255,255,255,0.18)',
+  color: 'white',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  flexShrink: 0
+};
+
+const titleStyle = {
+  color: 'white',
+  fontWeight: 600,
+  fontSize: 16,
+  flex: 1,
+  textAlign: 'center'
+};
+
+const contentStyle = {
+  padding: 12,
+  flex: 1,
+  overflowY: 'auto'
+};
+
+const logCardStyle = {
+  marginBottom: 8,
+  borderRadius: 12,
+  borderColor: 'rgba(31,77,63,0.08)',
+  borderWidth: '0.5px',
+  boxShadow: '0 1px 2px rgba(31,77,63,0.03)'
+};
