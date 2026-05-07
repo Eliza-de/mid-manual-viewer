@@ -1,5 +1,12 @@
 /**
- * DocumentUpload — admin upload PDF pages (rebranded)
+ * DocumentUpload — VERSION 2 REDESIGN (Lean Buddy mint sage)
+ * BUILD: 2026-05-07-V2-DOCUPLOAD
+ *
+ * Changes from V1:
+ *   - Mint gradient header
+ *   - Submit button: visible disabled state (gray, not invisible green)
+ *   - Cleaner card layout
+ *   - Same form logic
  */
 
 import { useState } from 'react';
@@ -21,6 +28,12 @@ const { Title, Text } = Typography;
 const { Dragger } = Upload;
 
 export default function DocumentUpload() {
+  // V2 marker
+  if (typeof window !== 'undefined' && !window.__docupload_v2_loaded) {
+    console.log('%c[DocumentUpload V2 LOADED]', 'background:#1F4D3F;color:#A4DFCB;padding:4px 8px;border-radius:4px');
+    window.__docupload_v2_loaded = true;
+  }
+
   const auth = useAuth();
   const nav = useNavigation();
   const [form] = Form.useForm();
@@ -103,7 +116,7 @@ export default function DocumentUpload() {
           auth.logout();
           return;
         }
-        setError(r.error || 'อัปโหลดไม่สำเร็จ');
+        setError(r.error || 'อัพโหลดไม่สำเร็จ');
         setUploading(false);
         return;
       }
@@ -119,18 +132,22 @@ export default function DocumentUpload() {
     }
   }
 
+  const canSubmit = fileList.length > 0 && !uploading;
+
   return (
     <div style={pageStyle}>
+      {/* Mint gradient header */}
       <div style={topBarStyle}>
-        <Button type="text" icon={<ArrowLeftOutlined />}
-          onClick={() => nav.goAdminPage('dashboard')} style={{ color: '#fff' }}>กลับ</Button>
-        <div style={{ color: '#fff', fontWeight: 600, fontSize: 16 }}>เพิ่มเอกสารใหม่</div>
-        <div style={{ width: 60 }} />
+        <div style={iconBtnStyle} onClick={() => nav.goAdminPage('dashboard')} role="button">
+          <ArrowLeftOutlined style={{ fontSize: 18 }} />
+        </div>
+        <div style={titleStyle}>เพิ่มเอกสารใหม่</div>
+        <div style={{ width: 36 }} />
       </div>
 
       <div style={contentStyle}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
-          <Card>
+          <div style={cardStyle}>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <div>
                 <Title level={5} style={{ margin: 0, color: COLORS.primary }}>📤 อัปโหลดเอกสาร</Title>
@@ -139,14 +156,18 @@ export default function DocumentUpload() {
                 </Text>
               </div>
 
-              {error && <Alert type="error" showIcon message={error} closable onClose={() => setError(null)} />}
+              {error && <Alert type="error" showIcon message={error} closable onClose={() => setError(null)} style={{ borderRadius: 10 }} />}
               {success && (
                 <Alert type="success" showIcon icon={<CheckCircleOutlined />}
-                  message={success} closable onClose={() => setSuccess(null)} />
+                  message={success} closable onClose={() => setSuccess(null)} style={{ borderRadius: 10 }} />
               )}
 
               {uploading && (
-                <Progress percent={progress} status={progress === 100 ? 'success' : 'active'} strokeColor={COLORS.accent} />
+                <Progress
+                  percent={progress}
+                  status={progress === 100 ? 'success' : 'active'}
+                  strokeColor={COLORS.primary}
+                />
               )}
 
               <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}
@@ -165,9 +186,9 @@ export default function DocumentUpload() {
 
                 <Form.Item label="หมวด" name="category" rules={[{ required: true }]} initialValue="topic">
                   <Radio.Group>
-                    <Radio value="full_book">📚 เต็มเล่ม</Radio>
-                    <Radio value="topic">📑 เรื่อง</Radio>
-                    <Radio value="summary">📋 สรุป</Radio>
+                    <Radio value="full_book">เล่ม</Radio>
+                    <Radio value="topic">บท</Radio>
+                    <Radio value="summary">รีวิว</Radio>
                   </Radio.Group>
                 </Form.Item>
 
@@ -192,40 +213,108 @@ export default function DocumentUpload() {
                     }}
                   >
                     <p className="ant-upload-drag-icon">
-                      <InboxOutlined style={{ color: COLORS.accent }} />
+                      <InboxOutlined style={{ color: '#5DBFA0' }} />
                     </p>
                     <p className="ant-upload-text" style={{ color: COLORS.primary }}>คลิกหรือลากไฟล์มาเพื่ออัปโหลด</p>
-                    <p className="ant-upload-hint">ไฟล์จะเรียงตามชื่อ - ใช้ชื่อ page_001.png, page_002.png...</p>
+                    <p className="ant-upload-hint" style={{ fontSize: 11 }}>ไฟล์จะเรียงตามชื่อ - ใช้ชื่อ page_001.png, page_002.png...</p>
                   </Dragger>
                 </Form.Item>
 
+                {/* Submit button — visible disabled state */}
                 <Form.Item style={{ marginBottom: 0 }}>
-                  <Button type="primary" htmlType="submit" block loading={uploading} size="large"
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    block
+                    loading={uploading}
+                    size="large"
                     icon={<FileImageOutlined />}
-                    disabled={fileList.length === 0}
-                    style={{ background: COLORS.primary, borderColor: COLORS.primary }}>
+                    disabled={!canSubmit}
+                    style={canSubmit ? primaryBtnStyle : disabledBtnStyle}
+                  >
                     {uploading ? 'กำลังอัปโหลด...' : `อัปโหลด ${fileList.length} ไฟล์`}
                   </Button>
                 </Form.Item>
               </Form>
             </Space>
-          </Card>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
+// ===== Styles =====
+
 const pageStyle = {
-  position: 'fixed', inset: 0,
-  display: 'flex', flexDirection: 'column',
-  background: COLORS.bgSoft, zIndex: 100
+  position: 'fixed',
+  inset: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  background: COLORS.bgSoft,
+  zIndex: 100
 };
 
 const topBarStyle = {
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  padding: '0 12px', background: COLORS.primary,
-  height: 52, flexShrink: 0
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '0 14px',
+  background: `linear-gradient(135deg, #5DBFA0 0%, ${COLORS.primary} 100%)`,
+  height: 56,
+  flexShrink: 0,
+  boxShadow: '0 2px 8px rgba(31,77,63,0.12)'
 };
 
-const contentStyle = { padding: 12, flex: 1, overflowY: 'auto' };
+const iconBtnStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  background: 'rgba(255,255,255,0.18)',
+  color: 'white',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  flexShrink: 0
+};
+
+const titleStyle = {
+  color: 'white',
+  fontWeight: 600,
+  fontSize: 16,
+  flex: 1,
+  textAlign: 'center'
+};
+
+const contentStyle = {
+  padding: 12,
+  flex: 1,
+  overflowY: 'auto'
+};
+
+const cardStyle = {
+  background: 'white',
+  borderRadius: 14,
+  padding: 16,
+  border: '0.5px solid rgba(31,77,63,0.08)',
+  boxShadow: '0 1px 3px rgba(31,77,63,0.04)'
+};
+
+// Primary button — strong green with WHITE text
+const primaryBtnStyle = {
+  background: COLORS.primary,
+  borderColor: COLORS.primary,
+  color: 'white',
+  fontWeight: 500,
+  height: 44
+};
+
+// Disabled button — light gray with VISIBLE gray text
+const disabledBtnStyle = {
+  background: '#E5E7EB',
+  borderColor: '#E5E7EB',
+  color: '#9CA3AF',
+  fontWeight: 500,
+  height: 44
+};
