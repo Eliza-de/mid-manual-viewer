@@ -1,8 +1,10 @@
 /**
- * Splash — Lean Buddy with progress bar pushed UP
+ * Splash — Lean Buddy with full image visible + progress bar overlay
  *
- * Progress bar is now positioned ABOVE the copyright card
- * with safe distance from bottom edge.
+ * Changes from prev:
+ *   - Replaced background-image with <img> tag using object-fit: cover
+ *   - Image fills screen fully — no whitespace at top
+ *   - Progress bar floats above image at fixed bottom position
  */
 
 import { useEffect, useState } from 'react';
@@ -67,6 +69,14 @@ export default function Splash() {
     <div style={containerStyle}>
       <style>{keyframes}</style>
 
+      {/* Image fills the screen — uses object-fit cover with bottom anchor */}
+      <img
+        src="/splash-bg.jpg"
+        alt=""
+        style={imgStyle}
+      />
+
+      {/* Progress bar overlay — fixed near bottom of viewport */}
       <div style={progressBoxStyle}>
         <div style={progressLabelRowStyle}>
           <span style={progressLabelStyle}>กำลังเตรียมระบบ</span>
@@ -98,30 +108,37 @@ const containerStyle = {
   top: 0, left: 0, right: 0, bottom: 0,
   width: '100vw',
   height: '100dvh',
-  backgroundImage: 'url(/splash-bg.jpg)',
-  backgroundSize: 'cover',
-  backgroundPosition: 'center top',
-  backgroundRepeat: 'no-repeat',
   backgroundColor: '#E8F5EE',
   overflow: 'hidden'
 };
 
-// 🎯 ดึงขึ้นสูงขึ้น — bottom: 38% แทน 25%
+// 🎯 Image as <img> with object-fit: cover + objectPosition
+//   - 'center bottom' = ชิดล่าง (ตัดจากบนถ้าจำเป็น)
+//   - ทำให้ copyright card อยู่ก้นจอจริง
+const imgStyle = {
+  position: 'absolute',
+  top: 0, left: 0,
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+  objectPosition: 'center bottom',   // ← key: bottom alignment
+  zIndex: 1
+};
+
+// 🎯 Progress bar overlay — fixed position from bottom
 //
-// ค่า bottom เพิ่ม = progress bar ขึ้นบน
-// ค่า bottom ลด   = progress bar ลงล่าง (ทับ copyright)
-//
-// ถ้ายังไม่ตรง ปรับตาม:
-//   bottom: '32%'  -> ลงนิดหน่อย
-//   bottom: '38%'  -> default ★
-//   bottom: '42%'  -> ขึ้นอีก
-//   bottom: '45%'  -> ใกล้ dots
+// ค่า bottom เป็นความสูง pixel จากก้นจอ (คงที่ไม่ขึ้นกับขนาดจอ)
+//   bottom: '120px'  -> สูงประมาณ copyright card
+//   bottom: '180px'  -> default ★ (เหนือ copyright card)
+//   bottom: '220px'  -> สูงขึ้นอีก
+//   bottom: '260px'  -> ใกล้ tagline
 const progressBoxStyle = {
   position: 'absolute',
-  bottom: '38%',           // ← เพิ่มจาก 25% เป็น 38% (ดึงขึ้น 13%)
+  bottom: '180px',
   left: 0,
   right: 0,
   padding: '0 40px',
+  zIndex: 10,
   animation: 'lb-fadein 0.6s ease-out'
 };
 
@@ -135,23 +152,26 @@ const progressLabelRowStyle = {
 const progressLabelStyle = {
   fontSize: 12,
   color: COLORS.primary,
-  opacity: 0.7,
-  fontWeight: 500
+  opacity: 0.8,
+  fontWeight: 600,
+  textShadow: '0 1px 2px rgba(255,255,255,0.5)'
 };
 
 const progressPercentStyle = {
   fontSize: 13,
   color: COLORS.primary,
   fontWeight: 700,
-  fontVariantNumeric: 'tabular-nums'
+  fontVariantNumeric: 'tabular-nums',
+  textShadow: '0 1px 2px rgba(255,255,255,0.5)'
 };
 
 const progressTrackStyle = {
   height: 6,
-  background: 'rgba(31, 77, 63, 0.12)',
+  background: 'rgba(255, 255, 255, 0.6)',
   borderRadius: 999,
   overflow: 'hidden',
-  position: 'relative'
+  position: 'relative',
+  boxShadow: '0 1px 3px rgba(31, 77, 63, 0.1)'
 };
 
 const progressFillStyle = {
