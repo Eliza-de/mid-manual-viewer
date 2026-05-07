@@ -1,44 +1,52 @@
 /**
- * UserManagement — Phases 7 + 9 + 12
- * Phase 9 NEW: multi-select + bulk approve/disable/enable
+ * UserManagement — VERSION 2 REDESIGN (Lean Buddy mint sage)
+ * BUILD: 2026-05-07-V2-USERMGMT
+ *
+ * Changes from V1:
+ *   - Mint gradient header
+ *   - REMOVED department filter (no longer used)
+ *   - Search bar: full width
+ *   - Cleaner cards
  */
 
 import { useEffect, useState, useMemo } from 'react';
 import {
   Card, Button, List, Avatar, Tag, Tabs, Modal, message, Space,
-  Typography, Dropdown, Empty, Spin, Checkbox
+  Typography, Dropdown, Empty, Spin, Checkbox, Input
 } from 'antd';
 import {
   ArrowLeftOutlined, UserOutlined, CheckOutlined, StopOutlined,
   ReloadOutlined, MoreOutlined, KeyOutlined, CrownOutlined, PlayCircleOutlined,
-  CheckSquareOutlined
+  SearchOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useNavigation } from '../../hooks/useNavigation.jsx';
 import { getIdToken } from '../../api/liff.js';
 import {
-  listUsers, listDepartments, approveUser, disableUser, enableUser,
+  listUsers, approveUser, disableUser, enableUser,
   toggleAdmin, resetUserPin,
   bulkApproveUsers, bulkDisableUsers, bulkEnableUsers
 } from '../../api/admin.js';
-import SearchBar from '../../components/SearchBar.jsx';
 import BulkActionBar from '../../components/BulkActionBar.jsx';
 import { COLORS } from '../../brand.js';
 
 const { Text } = Typography;
 
 export default function UserManagement() {
+  // V2 marker
+  if (typeof window !== 'undefined' && !window.__usermgmt_v2_loaded) {
+    console.log('%c[UserManagement V2 LOADED]', 'background:#1F4D3F;color:#A4DFCB;padding:4px 8px;border-radius:4px');
+    window.__usermgmt_v2_loaded = true;
+  }
+
   const auth = useAuth();
   const nav = useNavigation();
   const [tab, setTab] = useState('pending');
   const [search, setSearch] = useState('');
-  const [department, setDepartment] = useState('');
   const [users, setUsers] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  // Multi-select state — Map from line_user_id → user object
   const [selected, setSelected] = useState(new Map());
   const selectedCount = selected.size;
 
@@ -49,7 +57,8 @@ export default function UserManagement() {
     if (!auth.session) return;
     setLoading(true);
     try {
-      const r = await listUsers(getIdToken(), auth.session.token, { status: tab, search, department });
+      // department parameter removed
+      const r = await listUsers(getIdToken(), auth.session.token, { status: tab, search });
       if (r.ok) setUsers(r.users);
       else if (r.needsLogin) auth.logout();
       else message.error(r.error || 'โหลดข้อมูลไม่สำเร็จ');
@@ -60,19 +69,8 @@ export default function UserManagement() {
     }
   }
 
-  async function loadDepartments() {
-    if (!auth.session) return;
-    try {
-      const r = await listDepartments(getIdToken(), auth.session.token);
-      if (r.ok) setDepartments(r.departments);
-    } catch {}
-  }
-
-  useEffect(() => { load(); }, [tab, search, department]);
-  useEffect(() => { loadDepartments(); }, []);
-
-  // Reset selection when tab/filter changes
-  useEffect(() => { setSelected(new Map()); }, [tab, search, department]);
+  useEffect(() => { load(); }, [tab, search]);
+  useEffect(() => { setSelected(new Map()); }, [tab, search]);
 
   function toggleSelect(user) {
     const m = new Map(selected);
@@ -86,7 +84,6 @@ export default function UserManagement() {
       setSelected(new Map());
     } else {
       const m = new Map();
-      // Skip self in bulk select (cannot bulk act on self)
       const selfId = auth.session?.user?.lineUserId || auth.session?.lineUserId;
       users.forEach(u => {
         if (u.line_user_id !== selfId) m.set(u.line_user_id, u);
@@ -105,7 +102,7 @@ export default function UserManagement() {
       okButtonProps: { style: { background: COLORS.primary, borderColor: COLORS.primary } },
       async onOk() {
         const r = await approveUser(getIdToken(), auth.session.token, user.line_user_id);
-        if (r.ok) { message.success('อนุมัติสำเร็จ'); load(); loadDepartments(); }
+        if (r.ok) { message.success('อนุมัติสำเร็จ'); load(); }
         else message.error(r.error || 'ไม่สำเร็จ');
       }
     });
@@ -133,7 +130,7 @@ export default function UserManagement() {
   async function handleToggleAdmin(user) {
     const action = user.is_admin ? 'ถอดสิทธิ์ admin' : 'มอบสิทธิ์ admin';
     Modal.confirm({
-      title: action, content: `${action} ของ ${user.display_name}?`,
+      title: action, content: `${action} จาก ${user.display_name}?`,
       okText: 'ยืนยัน', cancelText: 'ยกเลิก',
       okButtonProps: { style: { background: COLORS.primary, borderColor: COLORS.primary } },
       async onOk() {
@@ -157,7 +154,7 @@ export default function UserManagement() {
     });
   }
 
-  // ============ BULK ACTIONS (Phase 9) ============
+  // ============ BULK ACTIONS ============
 
   async function runBulk(action, label, danger = false) {
     const ids = Array.from(selected.keys());
@@ -189,7 +186,6 @@ export default function UserManagement() {
     });
   }
 
-  // Build bulk action list per tab
   const bulkActions = useMemo(() => {
     if (tab === 'pending') {
       return [{
@@ -225,33 +221,40 @@ export default function UserManagement() {
   function buildActionMenu(user) {
     const items = [];
     if (user.status === 'pending') {
-      items.push({ key: 'approve', icon: <CheckOutlined style={{ color: COLORS.accent }} />, label: 'อนุมัติ', onClick: () => handleApprove(user) });
+      items.push({ key: 'approve', icon: <CheckOutlined style={{ color: '#5DBFA0' }} />, label: 'อนุมัติ', onClick: () => handleApprove(user) });
     }
     if (user.status === 'active') {
-      items.push({ key: 'toggleAdmin', icon: <CrownOutlined style={{ color: '#f59e0b' }} />, label: user.is_admin ? 'ถอด admin' : 'ตั้งเป็น admin', onClick: () => handleToggleAdmin(user) });
+      items.push({ key: 'toggleAdmin', icon: <CrownOutlined style={{ color: '#F59E0B' }} />, label: user.is_admin ? 'ถอด admin' : 'ตั้งเป็น admin', onClick: () => handleToggleAdmin(user) });
       items.push({ key: 'resetPin', icon: <KeyOutlined />, label: 'Reset PIN', onClick: () => handleResetPin(user) });
       items.push({ type: 'divider' });
       items.push({ key: 'disable', icon: <StopOutlined />, label: 'ระงับการใช้งาน', danger: true, onClick: () => handleDisable(user) });
     }
     if (user.status === 'disabled') {
-      items.push({ key: 'enable', icon: <PlayCircleOutlined style={{ color: COLORS.accent }} />, label: 'เปิดใช้งานอีกครั้ง', onClick: () => handleEnable(user) });
+      items.push({ key: 'enable', icon: <PlayCircleOutlined style={{ color: '#5DBFA0' }} />, label: 'เปิดใช้งานอีกครั้ง', onClick: () => handleEnable(user) });
     }
     return items;
   }
 
-  const departmentOptions = departments.map(d => ({ label: d, value: d }));
   const selfId = auth.session?.user?.lineUserId || auth.session?.lineUserId;
 
   return (
     <div style={pageStyle}>
+      {/* Mint gradient header */}
       <div style={topBarStyle}>
-        <Button type="text" icon={<ArrowLeftOutlined />}
-          onClick={() => nav.goAdminPage('dashboard')} style={{ color: '#fff' }}>กลับ</Button>
-        <div style={{ color: '#fff', fontWeight: 600, fontSize: 16 }}>จัดการผู้ใช้</div>
-        <Button type="text" icon={<ReloadOutlined spin={loading} />} onClick={load} style={{ color: '#fff' }} />
+        <div style={iconBtnStyle} onClick={() => nav.goAdminPage('dashboard')} role="button">
+          <ArrowLeftOutlined style={{ fontSize: 18 }} />
+        </div>
+        <div style={titleStyle}>จัดการผู้ใช้</div>
+        <div style={iconBtnStyle} onClick={load} role="button">
+          <ReloadOutlined spin={loading} style={{ fontSize: 18 }} />
+        </div>
       </div>
 
-      <Tabs activeKey={tab} onChange={setTab} centered style={{ background: '#fff' }}
+      <Tabs
+        activeKey={tab}
+        onChange={setTab}
+        centered
+        style={{ background: '#fff' }}
         items={[
           { key: 'pending', label: 'รออนุมัติ' },
           { key: 'active', label: 'ใช้งาน' },
@@ -261,13 +264,14 @@ export default function UserManagement() {
 
       <div style={{ ...contentStyle, paddingBottom: selectedCount > 0 ? 80 : 12 }}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
-          <SearchBar
-            placeholder="ค้นหาชื่อ / แผนก / รหัสพนักงาน..."
-            onSearchChange={setSearch}
-            filterOptions={departmentOptions}
-            filterValue={department}
-            onFilterChange={(v) => setDepartment(v || '')}
-            filterPlaceholder="แผนก"
+          {/* Full-width search (no department filter) */}
+          <Input
+            placeholder="ค้นหาชื่อ / รหัสพนักงาน..."
+            prefix={<SearchOutlined style={{ color: '#94A3B8' }} />}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            allowClear
+            style={searchInputStyle}
           />
 
           {loading && users.length === 0 ? (
@@ -275,7 +279,7 @@ export default function UserManagement() {
           ) : users.length === 0 ? (
             <Empty
               description={
-                search || department ? 'ไม่พบผู้ใช้ที่ตรงกับเงื่อนไข' :
+                search ? 'ไม่พบผู้ใช้ที่ตรงกับเงื่อนไข' :
                 tab === 'pending' ? 'ไม่มีผู้ใช้รออนุมัติ' :
                 tab === 'active' ? 'ไม่มีผู้ใช้ที่ active' :
                 'ไม่มีผู้ใช้ที่ถูกระงับ'
@@ -302,8 +306,10 @@ export default function UserManagement() {
                       size="small"
                       style={{
                         marginBottom: 8,
-                        borderColor: isChecked ? COLORS.primary : undefined,
-                        background: isChecked ? COLORS.bgSoft : undefined
+                        borderColor: isChecked ? COLORS.primary : 'rgba(31,77,63,0.08)',
+                        background: isChecked ? COLORS.bgSoft : '#fff',
+                        borderRadius: 12,
+                        borderWidth: '0.5px'
                       }}
                       styles={{ body: { padding: 12 } }}
                     >
@@ -370,15 +376,55 @@ export default function UserManagement() {
 }
 
 const pageStyle = {
-  position: 'fixed', inset: 0,
-  display: 'flex', flexDirection: 'column',
-  background: COLORS.bgSoft, zIndex: 100
+  position: 'fixed',
+  inset: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  background: COLORS.bgSoft,
+  zIndex: 100
 };
 
 const topBarStyle = {
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  padding: '0 12px', background: COLORS.primary,
-  height: 52, flexShrink: 0
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '0 14px',
+  background: `linear-gradient(135deg, #5DBFA0 0%, ${COLORS.primary} 100%)`,
+  height: 56,
+  flexShrink: 0,
+  boxShadow: '0 2px 8px rgba(31,77,63,0.12)'
 };
 
-const contentStyle = { padding: 12, flex: 1, overflowY: 'auto' };
+const iconBtnStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  background: 'rgba(255,255,255,0.18)',
+  color: 'white',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  flexShrink: 0
+};
+
+const titleStyle = {
+  color: 'white',
+  fontWeight: 600,
+  fontSize: 16,
+  flex: 1,
+  textAlign: 'center'
+};
+
+const contentStyle = {
+  padding: 12,
+  flex: 1,
+  overflowY: 'auto'
+};
+
+const searchInputStyle = {
+  borderRadius: 12,
+  marginBottom: 10,
+  height: 40,
+  border: '0.5px solid rgba(31,77,63,0.12)'
+};

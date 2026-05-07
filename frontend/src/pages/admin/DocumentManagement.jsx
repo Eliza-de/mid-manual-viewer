@@ -1,6 +1,12 @@
 /**
- * DocumentManagement — Phases 7 + 8 + 9 + 11
- * Phase 9 NEW: multi-select + bulk archive/restore + bulk update category
+ * DocumentManagement — VERSION 2 REDESIGN (Lean Buddy mint sage)
+ * BUILD: 2026-05-07-V2-DOCMGMT
+ *
+ * Changes from V1:
+ *   - Mint gradient header
+ *   - Cleaner cards with rounded corners
+ *   - Color-coded form_code tags (matches Home V2)
+ *   - Kept category filter (still needed)
  */
 
 import { useEffect, useState, useMemo } from 'react';
@@ -10,7 +16,8 @@ import {
 } from 'antd';
 import {
   ArrowLeftOutlined, FileTextOutlined, EditOutlined, DeleteOutlined,
-  ReloadOutlined, MoreOutlined, UndoOutlined, SwapOutlined, TagOutlined
+  ReloadOutlined, MoreOutlined, UndoOutlined, SwapOutlined, TagOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useNavigation } from '../../hooks/useNavigation.jsx';
@@ -19,7 +26,6 @@ import {
   listAllDocuments, updateDocument, archiveDocument, restoreDocument,
   bulkArchiveDocuments, bulkRestoreDocuments, bulkUpdateCategory
 } from '../../api/admin.js';
-import SearchBar from '../../components/SearchBar.jsx';
 import BulkActionBar from '../../components/BulkActionBar.jsx';
 import ReplacePagesModal from '../../components/ReplacePagesModal.jsx';
 import { COLORS } from '../../brand.js';
@@ -27,18 +33,35 @@ import { COLORS } from '../../brand.js';
 const { Text } = Typography;
 
 const CATEGORY_LABEL = {
-  full_book: '📚 เต็มเล่ม',
-  topic: '📑 เรื่อง',
-  summary: '📋 สรุป'
+  full_book: 'เล่ม',
+  topic: 'บท',
+  summary: 'รีวิว'
 };
 
 const CATEGORY_OPTIONS = [
-  { label: '📚 เต็มเล่ม', value: 'full_book' },
-  { label: '📑 เรื่อง', value: 'topic' },
-  { label: '📋 สรุป', value: 'summary' }
+  { label: 'เล่ม', value: 'full_book' },
+  { label: 'บท', value: 'topic' },
+  { label: 'รีวิว', value: 'summary' }
 ];
 
+// Tag color by form_code prefix (matches Home V2)
+function getTagColor(formCode) {
+  if (!formCode) return { bg: '#6B8278', text: 'white' };
+  const code = formCode.toUpperCase();
+  if (code.startsWith('FF')) return { bg: COLORS.primary, text: 'white' };
+  if (code.startsWith('KEY')) return { bg: '#E8965B', text: 'white' };
+  if (code.startsWith('BOOK')) return { bg: '#5DBFA0', text: 'white' };
+  if (code.startsWith('SUM')) return { bg: '#A4DFCB', text: COLORS.primary };
+  return { bg: '#6B8278', text: 'white' };
+}
+
 export default function DocumentManagement() {
+  // V2 marker
+  if (typeof window !== 'undefined' && !window.__docmgmt_v2_loaded) {
+    console.log('%c[DocumentManagement V2 LOADED]', 'background:#1F4D3F;color:#A4DFCB;padding:4px 8px;border-radius:4px');
+    window.__docmgmt_v2_loaded = true;
+  }
+
   const auth = useAuth();
   const nav = useNavigation();
   const [tab, setTab] = useState('active');
@@ -94,8 +117,6 @@ export default function DocumentManagement() {
     }
   }
 
-  // ============ INDIVIDUAL ACTIONS ============
-
   function openEdit(doc) {
     setEditing(doc);
     editForm.setFieldsValue({
@@ -128,8 +149,6 @@ export default function DocumentManagement() {
     if (r.ok) { message.success('Restore สำเร็จ'); load(); }
     else message.error(r.error || 'ไม่สำเร็จ');
   }
-
-  // ============ BULK ACTIONS (Phase 9) ============
 
   async function runBulk(action, label, danger = false) {
     const ids = Array.from(selected.keys());
@@ -218,7 +237,7 @@ export default function DocumentManagement() {
     if (doc.status === 'active') {
       return [
         { key: 'edit', icon: <EditOutlined />, label: 'แก้ไขข้อมูล', onClick: () => openEdit(doc) },
-        { key: 'replacePages', icon: <SwapOutlined style={{ color: COLORS.accent }} />, label: 'แก้ไขหน้า', onClick: () => setReplacingDoc(doc) },
+        { key: 'replacePages', icon: <SwapOutlined style={{ color: '#5DBFA0' }} />, label: 'แทนหน้า', onClick: () => setReplacingDoc(doc) },
         { type: 'divider' },
         { key: 'archive', icon: <DeleteOutlined />, label: 'Archive', danger: true, onClick: () => handleArchive(doc) }
       ];
@@ -228,14 +247,22 @@ export default function DocumentManagement() {
 
   return (
     <div style={pageStyle}>
+      {/* Mint gradient header */}
       <div style={topBarStyle}>
-        <Button type="text" icon={<ArrowLeftOutlined />}
-          onClick={() => nav.goAdminPage('dashboard')} style={{ color: '#fff' }}>กลับ</Button>
-        <div style={{ color: '#fff', fontWeight: 600, fontSize: 16 }}>จัดการเอกสาร</div>
-        <Button type="text" icon={<ReloadOutlined spin={loading} />} onClick={load} style={{ color: '#fff' }} />
+        <div style={iconBtnStyle} onClick={() => nav.goAdminPage('dashboard')} role="button">
+          <ArrowLeftOutlined style={{ fontSize: 18 }} />
+        </div>
+        <div style={titleStyle}>จัดการเอกสาร</div>
+        <div style={iconBtnStyle} onClick={load} role="button">
+          <ReloadOutlined spin={loading} style={{ fontSize: 18 }} />
+        </div>
       </div>
 
-      <Tabs activeKey={tab} onChange={setTab} centered style={{ background: '#fff' }}
+      <Tabs
+        activeKey={tab}
+        onChange={setTab}
+        centered
+        style={{ background: '#fff' }}
         items={[
           { key: 'active', label: 'ใช้งาน' },
           { key: 'archived', label: 'Archived' }
@@ -244,14 +271,25 @@ export default function DocumentManagement() {
 
       <div style={{ ...contentStyle, paddingBottom: selectedCount > 0 ? 80 : 12 }}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
-          <SearchBar
-            placeholder="ค้นหาชื่อ / form code / คำอธิบาย..."
-            onSearchChange={setSearch}
-            filterOptions={CATEGORY_OPTIONS}
-            filterValue={category}
-            onFilterChange={(v) => setCategory(v || '')}
-            filterPlaceholder="หมวด"
-          />
+          {/* Search 2/3 + Filter "หมวด" 1/3 */}
+          <div style={searchRowStyle}>
+            <Input
+              placeholder="ค้นหาชื่อ / form code..."
+              prefix={<SearchOutlined style={{ color: '#94A3B8' }} />}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              allowClear
+              style={searchInputStyle}
+            />
+            <Select
+              value={category || undefined}
+              onChange={(v) => setCategory(v || '')}
+              placeholder="หมวด"
+              allowClear
+              options={CATEGORY_OPTIONS}
+              style={filterSelectStyle}
+            />
+          </div>
 
           {loading && docs.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
@@ -274,24 +312,39 @@ export default function DocumentManagement() {
                 dataSource={docs}
                 renderItem={doc => {
                   const isChecked = selected.has(doc.id);
+                  const tagColor = getTagColor(doc.form_code);
                   return (
                     <Card
                       size="small"
                       style={{
                         marginBottom: 8,
-                        borderColor: isChecked ? COLORS.primary : undefined,
-                        background: isChecked ? COLORS.bgSoft : undefined
+                        borderColor: isChecked ? COLORS.primary : 'rgba(31,77,63,0.08)',
+                        background: isChecked ? COLORS.bgSoft : '#fff',
+                        borderRadius: 12,
+                        borderWidth: '0.5px'
                       }}
                       styles={{ body: { padding: 12 } }}
                     >
                       <div style={{ display: 'flex', gap: 10 }}>
                         <Checkbox checked={isChecked} onChange={() => toggleSelect(doc)} style={{ marginTop: 4 }} />
-                        <FileTextOutlined style={{ fontSize: 24, color: COLORS.primary, marginTop: 2 }} />
+                        <div style={docThumbStyle}>
+                          <FileTextOutlined style={{ fontSize: 22, color: 'white' }} />
+                        </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           {doc.form_code && (
-                            <Tag color={COLORS.primary} style={{ fontSize: 10, marginBottom: 4, color: '#fff', borderColor: COLORS.primary }}>
+                            <span style={{
+                              display: 'inline-block',
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                              letterSpacing: 0.4,
+                              marginBottom: 4,
+                              background: tagColor.bg,
+                              color: tagColor.text
+                            }}>
                               {doc.form_code}
-                            </Tag>
+                            </span>
                           )}
                           <div style={{ fontWeight: 600, fontSize: 14, color: COLORS.primary, lineHeight: 1.3 }}>
                             {doc.title}
@@ -325,9 +378,15 @@ export default function DocumentManagement() {
       />
 
       {/* Edit metadata modal */}
-      <Modal title="แก้ไขข้อมูลเอกสาร" open={!!editing} onCancel={() => setEditing(null)}
-        onOk={() => editForm.submit()} okText="บันทึก" cancelText="ยกเลิก"
-        okButtonProps={{ style: { background: COLORS.primary, borderColor: COLORS.primary } }}>
+      <Modal
+        title="แก้ไขข้อมูลเอกสาร"
+        open={!!editing}
+        onCancel={() => setEditing(null)}
+        onOk={() => editForm.submit()}
+        okText="บันทึก"
+        cancelText="ยกเลิก"
+        okButtonProps={{ style: { background: COLORS.primary, borderColor: COLORS.primary } }}
+      >
         <Form form={editForm} layout="vertical" onFinish={handleEditSubmit} requiredMark={false}>
           <Form.Item label="ชื่อเอกสาร" name="title" rules={[{ required: true, message: 'กรุณาระบุชื่อ' }]}>
             <Input maxLength={200} />
@@ -337,9 +396,9 @@ export default function DocumentManagement() {
           </Form.Item>
           <Form.Item label="หมวด" name="category" rules={[{ required: true }]}>
             <Radio.Group>
-              <Radio value="full_book">📚 เต็มเล่ม</Radio>
-              <Radio value="topic">📑 เรื่อง</Radio>
-              <Radio value="summary">📋 สรุป</Radio>
+              <Radio value="full_book">เล่ม</Radio>
+              <Radio value="topic">บท</Radio>
+              <Radio value="summary">รีวิว</Radio>
             </Radio.Group>
           </Form.Item>
           <Form.Item label="คำอธิบาย" name="description">
@@ -369,13 +428,12 @@ export default function DocumentManagement() {
           value={bulkNewCategory}
           onChange={(e) => setBulkNewCategory(e.target.value)}
         >
-          <Radio.Button value="full_book">📚 เต็มเล่ม</Radio.Button>
-          <Radio.Button value="topic">📑 เรื่อง</Radio.Button>
-          <Radio.Button value="summary">📋 สรุป</Radio.Button>
+          <Radio.Button value="full_book">เล่ม</Radio.Button>
+          <Radio.Button value="topic">บท</Radio.Button>
+          <Radio.Button value="summary">รีวิว</Radio.Button>
         </Radio.Group>
       </Modal>
 
-      {/* Replace Pages modal */}
       <ReplacePagesModal
         open={!!replacingDoc}
         doc={replacingDoc}
@@ -387,15 +445,79 @@ export default function DocumentManagement() {
 }
 
 const pageStyle = {
-  position: 'fixed', inset: 0,
-  display: 'flex', flexDirection: 'column',
-  background: COLORS.bgSoft, zIndex: 100
+  position: 'fixed',
+  inset: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  background: COLORS.bgSoft,
+  zIndex: 100
 };
 
 const topBarStyle = {
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  padding: '0 12px', background: COLORS.primary,
-  height: 52, flexShrink: 0
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '0 14px',
+  background: `linear-gradient(135deg, #5DBFA0 0%, ${COLORS.primary} 100%)`,
+  height: 56,
+  flexShrink: 0,
+  boxShadow: '0 2px 8px rgba(31,77,63,0.12)'
 };
 
-const contentStyle = { padding: 12, flex: 1, overflowY: 'auto' };
+const iconBtnStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  background: 'rgba(255,255,255,0.18)',
+  color: 'white',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  flexShrink: 0
+};
+
+const titleStyle = {
+  color: 'white',
+  fontWeight: 600,
+  fontSize: 16,
+  flex: 1,
+  textAlign: 'center'
+};
+
+const contentStyle = {
+  padding: 12,
+  flex: 1,
+  overflowY: 'auto'
+};
+
+const searchRowStyle = {
+  display: 'flex',
+  gap: 8,
+  marginBottom: 10
+};
+
+const searchInputStyle = {
+  borderRadius: 12,
+  height: 40,
+  flex: 2,
+  border: '0.5px solid rgba(31,77,63,0.12)'
+};
+
+const filterSelectStyle = {
+  flex: 1,
+  height: 40,
+  minWidth: 110
+};
+
+const docThumbStyle = {
+  width: 44,
+  height: 56,
+  borderRadius: 8,
+  background: `linear-gradient(135deg, #5DBFA0, ${COLORS.primary})`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+  boxShadow: '0 2px 4px rgba(31,77,63,0.08)'
+};

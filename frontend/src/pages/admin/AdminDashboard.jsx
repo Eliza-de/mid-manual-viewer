@@ -1,15 +1,21 @@
 /**
- * AdminDashboard — Phases 7 + 13 + 14
- * Added: Analytics + Notifications
+ * AdminDashboard — VERSION 2 REDESIGN (Lean Buddy mint sage)
+ * BUILD: 2026-05-07-V2-ADMIN
+ *
+ * Changes from V1:
+ *   - Mint gradient header (was solid mint)
+ *   - Welcome card: cleaner layout
+ *   - Stats cards: equal sizes, unified mint colors
+ *   - Action items: unified icon style
  */
 
 import { useEffect, useState } from 'react';
-import { Card, Typography, Button, Row, Col, Tag, Spin, Statistic, Badge, message } from 'antd';
+import { Tag, Spin, Badge, message } from 'antd';
 import {
   ArrowLeftOutlined, PlusOutlined, UsergroupAddOutlined,
   FileTextOutlined, HistoryOutlined, RightOutlined,
   ReloadOutlined, TeamOutlined, EyeOutlined, LoginOutlined,
-  BarChartOutlined, BellOutlined
+  BarChartOutlined, BellOutlined, SafetyCertificateOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useNavigation } from '../../hooks/useNavigation.jsx';
@@ -17,9 +23,13 @@ import { getIdToken } from '../../api/liff.js';
 import { getStats } from '../../api/admin.js';
 import { COLORS } from '../../brand.js';
 
-const { Title, Text } = Typography;
-
 export default function AdminDashboard() {
+  // V2 marker
+  if (typeof window !== 'undefined' && !window.__admin_v2_loaded) {
+    console.log('%c[AdminDashboard V2 LOADED]', 'background:#1F4D3F;color:#A4DFCB;padding:4px 8px;border-radius:4px');
+    window.__admin_v2_loaded = true;
+  }
+
   const auth = useAuth();
   const nav = useNavigation();
   const [stats, setStats] = useState(null);
@@ -46,14 +56,14 @@ export default function AdminDashboard() {
   const cards = [
     {
       key: 'upload',
-      icon: <PlusOutlined style={{ fontSize: 22, color: COLORS.primary }} />,
+      icon: <PlusOutlined />,
       title: 'เพิ่มเอกสารใหม่',
       desc: 'อัปโหลด PNG เข้าระบบ',
       onClick: () => nav.goAdminPage('upload')
     },
     {
       key: 'users',
-      icon: <UsergroupAddOutlined style={{ fontSize: 22, color: '#f59e0b' }} />,
+      icon: <UsergroupAddOutlined />,
       title: 'จัดการผู้ใช้',
       desc: 'อนุมัติ / ระงับ / ตั้งสิทธิ์ admin',
       badge: stats?.users?.pending || 0,
@@ -61,28 +71,28 @@ export default function AdminDashboard() {
     },
     {
       key: 'docs',
-      icon: <FileTextOutlined style={{ fontSize: 22, color: COLORS.accent }} />,
+      icon: <FileTextOutlined />,
       title: 'จัดการเอกสาร',
       desc: 'แก้ไข / archive / restore',
       onClick: () => nav.goAdminPage('docs')
     },
     {
       key: 'analytics',
-      icon: <BarChartOutlined style={{ fontSize: 22, color: '#8b5cf6' }} />,
+      icon: <BarChartOutlined />,
       title: 'Analytics',
       desc: 'สถิติการใช้งาน + charts',
       onClick: () => nav.goAdminPage('analytics')
     },
     {
       key: 'logs',
-      icon: <HistoryOutlined style={{ fontSize: 22, color: '#6366f1' }} />,
+      icon: <HistoryOutlined />,
       title: 'ดู Log',
       desc: 'Auth / Audit / Access logs · Export CSV',
       onClick: () => nav.goAdminPage('logs')
     },
     {
       key: 'notifications',
-      icon: <BellOutlined style={{ fontSize: 22, color: '#ec4899' }} />,
+      icon: <BellOutlined />,
       title: 'การแจ้งเตือน',
       desc: 'ตั้งค่า LINE notifications',
       onClick: () => nav.goAdminPage('notifications')
@@ -91,118 +101,230 @@ export default function AdminDashboard() {
 
   return (
     <div style={pageStyle}>
+      {/* Mint gradient header */}
       <div style={topBarStyle}>
-        <Button type="text" icon={<ArrowLeftOutlined />} onClick={nav.closeAdmin}
-          style={{ color: '#fff' }}>กลับ</Button>
-        <div style={{ color: '#fff', fontWeight: 600, fontSize: 16 }}>
-          🛡 Admin Dashboard
+        <div style={iconBtnStyle} onClick={nav.closeAdmin} role="button" aria-label="กลับ">
+          <ArrowLeftOutlined style={{ fontSize: 18 }} />
         </div>
-        <Button type="text" icon={<ReloadOutlined spin={loading} />} onClick={loadStats}
-          style={{ color: '#fff' }} />
+        <div style={titleStyle}>
+          <SafetyCertificateOutlined style={{ marginRight: 8, fontSize: 18 }} />
+          Admin Dashboard
+        </div>
+        <div style={iconBtnStyle} onClick={loadStats} role="button" aria-label="รีเฟรช">
+          <ReloadOutlined spin={loading} style={{ fontSize: 18 }} />
+        </div>
       </div>
 
       <div style={contentStyle}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
-          <Card size="small" style={{ marginBottom: 12, background: COLORS.bgSoft, border: `1px solid ${COLORS.brandLight}` }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>ยินดีต้อนรับ</Text>
-            <Title level={5} style={{ margin: '4px 0', color: COLORS.primary }}>
-              {auth.user?.displayName} <Tag color="gold">Admin</Tag>
-            </Title>
-            <Text type="secondary" style={{ fontSize: 12 }}>
+          {/* Welcome card */}
+          <div style={welcomeCardStyle}>
+            <div style={{ fontSize: 11, color: '#6B8278', marginBottom: 4 }}>ยินดีต้อนรับ</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 17, fontWeight: 600, color: COLORS.primary }}>
+                {auth.user?.displayName}
+              </div>
+              <Tag color="gold" style={{ marginInlineEnd: 0 }}>Admin</Tag>
+            </div>
+            <div style={{ fontSize: 12, color: '#6B8278', marginTop: 2 }}>
               {auth.user?.nickname || auth.user?.fullName || auth.user?.department}
-            </Text>
-          </Card>
+            </div>
+          </div>
 
+          {/* Stats — 3 equal cards */}
           {loading && !stats ? (
-            <Card style={{ marginBottom: 12, textAlign: 'center', padding: 24 }}>
+            <div style={{ padding: 32, textAlign: 'center' }}>
               <Spin />
-            </Card>
+            </div>
           ) : stats ? (
-            <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
-              <Col span={8}>
-                <Card size="small" styles={{ body: { padding: 10 } }}>
-                  <Statistic
-                    title={<span style={{ fontSize: 11 }}><TeamOutlined /> ผู้ใช้</span>}
-                    value={stats.users.total}
-                    valueStyle={{ fontSize: 18, color: COLORS.primary }}
-                  />
-                  {stats.users.pending > 0 && (
-                    <div style={{ fontSize: 10, color: '#f59e0b', marginTop: 2 }}>
-                      รออนุมัติ {stats.users.pending}
-                    </div>
-                  )}
-                </Card>
-              </Col>
-              <Col span={8}>
-                <Card size="small" styles={{ body: { padding: 10 } }}>
-                  <Statistic
-                    title={<span style={{ fontSize: 11 }}><FileTextOutlined /> เอกสาร</span>}
-                    value={stats.documents.active}
-                    valueStyle={{ fontSize: 18, color: COLORS.accent }}
-                  />
-                  {stats.documents.archived > 0 && (
-                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
-                      archived {stats.documents.archived}
-                    </div>
-                  )}
-                </Card>
-              </Col>
-              <Col span={8}>
-                <Card size="small" styles={{ body: { padding: 10 } }}>
-                  <Statistic
-                    title={<span style={{ fontSize: 11 }}><EyeOutlined /> เปิดวันนี้</span>}
-                    value={stats.today.accesses}
-                    valueStyle={{ fontSize: 18, color: '#6366f1' }}
-                  />
-                  <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
-                    <LoginOutlined /> {stats.today.logins} login
-                  </div>
-                </Card>
-              </Col>
-            </Row>
+            <div style={statsGridStyle}>
+              <StatCard
+                icon={<TeamOutlined />}
+                label="ผู้ใช้"
+                value={stats.users.total}
+                accent={COLORS.primary}
+                hint={stats.users.pending > 0 ? `รออนุมัติ ${stats.users.pending}` : null}
+                hintColor="#F59E0B"
+              />
+              <StatCard
+                icon={<FileTextOutlined />}
+                label="เอกสาร"
+                value={stats.documents.active}
+                accent="#5DBFA0"
+                hint={stats.documents.archived > 0 ? `archived ${stats.documents.archived}` : null}
+              />
+              <StatCard
+                icon={<EyeOutlined />}
+                label="เปิดวันนี้"
+                value={stats.today.accesses}
+                accent="#E8965B"
+                hint={<><LoginOutlined style={{ fontSize: 9, marginRight: 2 }} />{stats.today.logins} login</>}
+              />
+            </div>
           ) : null}
 
-          <Row gutter={[8, 8]}>
+          {/* Action items */}
+          <div style={{ marginTop: 8 }}>
             {cards.map(c => (
-              <Col span={24} key={c.key}>
-                <Card hoverable onClick={c.onClick} styles={{ body: { padding: 14 } }}
-                  style={{ cursor: 'pointer' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <div>
-                      {c.badge > 0 ? (
-                        <Badge count={c.badge} offset={[-4, 4]}>{c.icon}</Badge>
-                      ) : c.icon}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 15, color: COLORS.primary }}>
-                        {c.title}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                        {c.desc}
-                      </div>
-                    </div>
-                    <RightOutlined style={{ color: '#cbd5e1', fontSize: 14 }} />
-                  </div>
-                </Card>
-              </Col>
+              <div
+                key={c.key}
+                style={actionCardStyle}
+                onClick={c.onClick}
+                role="button"
+              >
+                <div style={actionIconStyle}>
+                  {c.badge > 0 ? (
+                    <Badge count={c.badge} offset={[-2, 2]}>
+                      <span style={{ fontSize: 20, color: COLORS.primary }}>{c.icon}</span>
+                    </Badge>
+                  ) : (
+                    <span style={{ fontSize: 20, color: COLORS.primary }}>{c.icon}</span>
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={actionTitleStyle}>{c.title}</div>
+                  <div style={actionDescStyle}>{c.desc}</div>
+                </div>
+                <RightOutlined style={{ color: '#CBD5E1', fontSize: 14 }} />
+              </div>
             ))}
-          </Row>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
+// Stats sub-component
+function StatCard({ icon, label, value, accent, hint, hintColor = '#94A3B8' }) {
+  return (
+    <div style={statCardStyle}>
+      <div style={{ fontSize: 11, color: '#6B8278', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ color: accent, fontSize: 13 }}>{icon}</span>
+        <span>{label}</span>
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: accent, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+        {value}
+      </div>
+      {hint && (
+        <div style={{ fontSize: 10, color: hintColor, marginTop: 2 }}>
+          {hint}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== Styles =====
+
 const pageStyle = {
-  position: 'fixed', inset: 0,
-  display: 'flex', flexDirection: 'column',
-  background: COLORS.bgSoft, zIndex: 100
+  position: 'fixed',
+  inset: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  background: COLORS.bgSoft,
+  zIndex: 100
 };
 
 const topBarStyle = {
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  padding: '0 12px', background: COLORS.primary,
-  height: 52, flexShrink: 0
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '0 14px',
+  background: `linear-gradient(135deg, #5DBFA0 0%, ${COLORS.primary} 100%)`,
+  height: 56,
+  flexShrink: 0,
+  boxShadow: '0 2px 8px rgba(31,77,63,0.12)'
 };
 
-const contentStyle = { padding: 12, flex: 1, overflowY: 'auto' };
+const iconBtnStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  background: 'rgba(255,255,255,0.18)',
+  color: 'white',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  flexShrink: 0,
+  transition: 'background 0.15s'
+};
+
+const titleStyle = {
+  color: 'white',
+  fontWeight: 600,
+  fontSize: 16,
+  flex: 1,
+  textAlign: 'center',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center'
+};
+
+const contentStyle = {
+  padding: '12px 14px',
+  flex: 1,
+  overflowY: 'auto'
+};
+
+const welcomeCardStyle = {
+  background: 'white',
+  borderRadius: 14,
+  padding: '14px 16px',
+  marginBottom: 12,
+  border: '0.5px solid rgba(31,77,63,0.08)',
+  boxShadow: '0 1px 3px rgba(31,77,63,0.04)'
+};
+
+const statsGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, 1fr)',
+  gap: 8,
+  marginBottom: 12
+};
+
+const statCardStyle = {
+  background: 'white',
+  borderRadius: 14,
+  padding: '12px 10px',
+  border: '0.5px solid rgba(31,77,63,0.08)',
+  boxShadow: '0 1px 3px rgba(31,77,63,0.04)'
+};
+
+const actionCardStyle = {
+  background: 'white',
+  borderRadius: 14,
+  padding: '14px 14px',
+  marginBottom: 8,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 14,
+  cursor: 'pointer',
+  border: '0.5px solid rgba(31,77,63,0.06)',
+  boxShadow: '0 1px 3px rgba(31,77,63,0.04)',
+  transition: 'all 0.15s'
+};
+
+const actionIconStyle = {
+  width: 44,
+  height: 44,
+  borderRadius: 12,
+  background: '#DCEEE3',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0
+};
+
+const actionTitleStyle = {
+  fontWeight: 600,
+  fontSize: 15,
+  color: COLORS.primary
+};
+
+const actionDescStyle = {
+  fontSize: 11,
+  color: '#6B8278',
+  marginTop: 2
+};
