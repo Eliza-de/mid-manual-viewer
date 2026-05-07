@@ -1,5 +1,5 @@
 /**
- * DocumentManagement — admin document edit/archive (rebranded)
+ * DocumentManagement — admin document with search + filter (Phase 7 + 8)
  */
 
 import { useEffect, useState } from 'react';
@@ -17,6 +17,7 @@ import { getIdToken } from '../../api/liff.js';
 import {
   listAllDocuments, updateDocument, archiveDocument, restoreDocument
 } from '../../api/admin.js';
+import SearchBar from '../../components/SearchBar.jsx';
 import { COLORS } from '../../brand.js';
 
 const { Text } = Typography;
@@ -27,10 +28,18 @@ const CATEGORY_LABEL = {
   summary: '📋 สรุป'
 };
 
+const CATEGORY_OPTIONS = [
+  { label: '📚 เต็มเล่ม', value: 'full_book' },
+  { label: '📑 เรื่อง', value: 'topic' },
+  { label: '📋 สรุป', value: 'summary' }
+];
+
 export default function DocumentManagement() {
   const auth = useAuth();
   const nav = useNavigation();
   const [tab, setTab] = useState('active');
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('');
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -40,7 +49,11 @@ export default function DocumentManagement() {
     if (!auth.session) return;
     setLoading(true);
     try {
-      const r = await listAllDocuments(getIdToken(), auth.session.token, tab);
+      const r = await listAllDocuments(getIdToken(), auth.session.token, {
+        status: tab,
+        search,
+        category
+      });
       if (r.ok) setDocs(r.documents);
       else if (r.needsLogin) auth.logout();
       else message.error(r.error || 'โหลดข้อมูลไม่สำเร็จ');
@@ -51,7 +64,7 @@ export default function DocumentManagement() {
     }
   }
 
-  useEffect(() => { load(); }, [tab]);
+  useEffect(() => { load(); }, [tab, search, category]);
 
   function openEdit(doc) {
     setEditing(doc);
@@ -120,42 +133,59 @@ export default function DocumentManagement() {
 
       <div style={contentStyle}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
+          <SearchBar
+            placeholder="ค้นหาชื่อ / form code / คำอธิบาย..."
+            onSearchChange={setSearch}
+            filterOptions={CATEGORY_OPTIONS}
+            filterValue={category}
+            onFilterChange={(v) => setCategory(v || '')}
+            filterPlaceholder="หมวด"
+          />
+
           {loading && docs.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
           ) : docs.length === 0 ? (
-            <Empty description="ไม่มีเอกสาร" style={{ marginTop: 40 }} />
-          ) : (
-            <List
-              dataSource={docs}
-              renderItem={doc => (
-                <Card size="small" style={{ marginBottom: 8 }} styles={{ body: { padding: 12 } }}>
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <FileTextOutlined style={{ fontSize: 24, color: COLORS.primary, marginTop: 2 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {doc.form_code && (
-                        <Tag color={COLORS.primary} style={{ fontSize: 10, marginBottom: 4, color: '#fff', borderColor: COLORS.primary }}>
-                          {doc.form_code}
-                        </Tag>
-                      )}
-                      <div style={{ fontWeight: 600, fontSize: 14, color: COLORS.primary, lineHeight: 1.3 }}>
-                        {doc.title}
-                      </div>
-                      <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
-                        {CATEGORY_LABEL[doc.category]} · {doc.page_count} หน้า · ลำดับ {doc.sort_order}
-                      </Text>
-                      {doc.updated_at && (
-                        <Text type="secondary" style={{ fontSize: 10 }}>
-                          แก้ไขล่าสุด: {new Date(doc.updated_at).toLocaleString('th-TH')}
-                        </Text>
-                      )}
-                    </div>
-                    <Dropdown menu={{ items: buildActionMenu(doc) }} placement="bottomRight" trigger={['click']}>
-                      <Button type="text" icon={<MoreOutlined />} />
-                    </Dropdown>
-                  </div>
-                </Card>
-              )}
+            <Empty
+              description={search || category ? 'ไม่พบเอกสารที่ตรงกับเงื่อนไข' : 'ไม่มีเอกสาร'}
+              style={{ marginTop: 40 }}
             />
+          ) : (
+            <>
+              <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
+                พบ {docs.length} เอกสาร
+              </Text>
+              <List
+                dataSource={docs}
+                renderItem={doc => (
+                  <Card size="small" style={{ marginBottom: 8 }} styles={{ body: { padding: 12 } }}>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <FileTextOutlined style={{ fontSize: 24, color: COLORS.primary, marginTop: 2 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {doc.form_code && (
+                          <Tag color={COLORS.primary} style={{ fontSize: 10, marginBottom: 4, color: '#fff', borderColor: COLORS.primary }}>
+                            {doc.form_code}
+                          </Tag>
+                        )}
+                        <div style={{ fontWeight: 600, fontSize: 14, color: COLORS.primary, lineHeight: 1.3 }}>
+                          {doc.title}
+                        </div>
+                        <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
+                          {CATEGORY_LABEL[doc.category]} · {doc.page_count} หน้า · ลำดับ {doc.sort_order}
+                        </Text>
+                        {doc.updated_at && (
+                          <Text type="secondary" style={{ fontSize: 10 }}>
+                            แก้ไขล่าสุด: {new Date(doc.updated_at).toLocaleString('th-TH')}
+                          </Text>
+                        )}
+                      </div>
+                      <Dropdown menu={{ items: buildActionMenu(doc) }} placement="bottomRight" trigger={['click']}>
+                        <Button type="text" icon={<MoreOutlined />} />
+                      </Dropdown>
+                    </div>
+                  </Card>
+                )}
+              />
+            </>
           )}
         </div>
       </div>

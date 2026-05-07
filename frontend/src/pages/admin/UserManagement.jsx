@@ -1,5 +1,5 @@
 /**
- * UserManagement — admin user management (rebranded)
+ * UserManagement — admin user management with search + filter (Phase 7 + 12)
  */
 
 import { useEffect, useState } from 'react';
@@ -15,9 +15,10 @@ import { useAuth } from '../../hooks/useAuth.jsx';
 import { useNavigation } from '../../hooks/useNavigation.jsx';
 import { getIdToken } from '../../api/liff.js';
 import {
-  listUsers, approveUser, disableUser, enableUser,
+  listUsers, listDepartments, approveUser, disableUser, enableUser,
   toggleAdmin, resetUserPin
 } from '../../api/admin.js';
+import SearchBar from '../../components/SearchBar.jsx';
 import { COLORS } from '../../brand.js';
 
 const { Text } = Typography;
@@ -26,15 +27,21 @@ export default function UserManagement() {
   const auth = useAuth();
   const nav = useNavigation();
   const [tab, setTab] = useState('pending');
+  const [search, setSearch] = useState('');
+  const [department, setDepartment] = useState('');
   const [users, setUsers] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
 
   async function load() {
     if (!auth.session) return;
     setLoading(true);
     try {
-      const idToken = getIdToken();
-      const r = await listUsers(idToken, auth.session.token, tab);
+      const r = await listUsers(getIdToken(), auth.session.token, {
+        status: tab,
+        search,
+        department
+      });
       if (r.ok) setUsers(r.users);
       else if (r.needsLogin) auth.logout();
       else message.error(r.error || 'โหลดข้อมูลไม่สำเร็จ');
@@ -45,18 +52,28 @@ export default function UserManagement() {
     }
   }
 
-  useEffect(() => { load(); }, [tab]);
+  async function loadDepartments() {
+    if (!auth.session) return;
+    try {
+      const r = await listDepartments(getIdToken(), auth.session.token);
+      if (r.ok) setDepartments(r.departments);
+    } catch {}
+  }
+
+  // Reload on tab/search/department change
+  useEffect(() => { load(); }, [tab, search, department]);
+  // Load departments once
+  useEffect(() => { loadDepartments(); }, []);
 
   async function handleApprove(user) {
     Modal.confirm({
       title: 'อนุมัติผู้ใช้',
       content: `อนุมัติให้ ${user.display_name} (${user.department}) เข้าใช้งานระบบ?`,
-      okText: 'อนุมัติ',
-      cancelText: 'ยกเลิก',
+      okText: 'อนุมัติ', cancelText: 'ยกเลิก',
       okButtonProps: { style: { background: COLORS.primary, borderColor: COLORS.primary } },
       async onOk() {
         const r = await approveUser(getIdToken(), auth.session.token, user.line_user_id);
-        if (r.ok) { message.success('อนุมัติสำเร็จ'); load(); }
+        if (r.ok) { message.success('อนุมัติสำเร็จ'); load(); loadDepartments(); }
         else message.error(r.error || 'ไม่สำเร็จ');
       }
     });
@@ -111,35 +128,21 @@ export default function UserManagement() {
   function buildActionMenu(user) {
     const items = [];
     if (user.status === 'pending') {
-      items.push({
-        key: 'approve', icon: <CheckOutlined style={{ color: COLORS.accent }} />,
-        label: 'อนุมัติ', onClick: () => handleApprove(user)
-      });
+      items.push({ key: 'approve', icon: <CheckOutlined style={{ color: COLORS.accent }} />, label: 'อนุมัติ', onClick: () => handleApprove(user) });
     }
     if (user.status === 'active') {
-      items.push({
-        key: 'toggleAdmin', icon: <CrownOutlined style={{ color: '#f59e0b' }} />,
-        label: user.is_admin ? 'ถอด admin' : 'ตั้งเป็น admin',
-        onClick: () => handleToggleAdmin(user)
-      });
-      items.push({
-        key: 'resetPin', icon: <KeyOutlined />, label: 'Reset PIN',
-        onClick: () => handleResetPin(user)
-      });
+      items.push({ key: 'toggleAdmin', icon: <CrownOutlined style={{ color: '#f59e0b' }} />, label: user.is_admin ? 'ถอด admin' : 'ตั้งเป็น admin', onClick: () => handleToggleAdmin(user) });
+      items.push({ key: 'resetPin', icon: <KeyOutlined />, label: 'Reset PIN', onClick: () => handleResetPin(user) });
       items.push({ type: 'divider' });
-      items.push({
-        key: 'disable', icon: <StopOutlined />, label: 'ระงับการใช้งาน',
-        danger: true, onClick: () => handleDisable(user)
-      });
+      items.push({ key: 'disable', icon: <StopOutlined />, label: 'ระงับการใช้งาน', danger: true, onClick: () => handleDisable(user) });
     }
     if (user.status === 'disabled') {
-      items.push({
-        key: 'enable', icon: <PlayCircleOutlined style={{ color: COLORS.accent }} />,
-        label: 'เปิดใช้งานอีกครั้ง', onClick: () => handleEnable(user)
-      });
+      items.push({ key: 'enable', icon: <PlayCircleOutlined style={{ color: COLORS.accent }} />, label: 'เปิดใช้งานอีกครั้ง', onClick: () => handleEnable(user) });
     }
     return items;
   }
+
+  const departmentOptions = departments.map(d => ({ label: d, value: d }));
 
   return (
     <div style={pageStyle}>
@@ -150,8 +153,7 @@ export default function UserManagement() {
         <Button type="text" icon={<ReloadOutlined spin={loading} />} onClick={load} style={{ color: '#fff' }} />
       </div>
 
-      <Tabs activeKey={tab} onChange={setTab} centered
-        style={{ background: '#fff' }}
+      <Tabs activeKey={tab} onChange={setTab} centered style={{ background: '#fff' }}
         items={[
           { key: 'pending', label: 'รออนุมัติ' },
           { key: 'active', label: 'ใช้งาน' },
@@ -161,11 +163,21 @@ export default function UserManagement() {
 
       <div style={contentStyle}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
+          <SearchBar
+            placeholder="ค้นหาชื่อ / แผนก / รหัสพนักงาน..."
+            onSearchChange={setSearch}
+            filterOptions={departmentOptions}
+            filterValue={department}
+            onFilterChange={(v) => setDepartment(v || '')}
+            filterPlaceholder="แผนก"
+          />
+
           {loading && users.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
           ) : users.length === 0 ? (
             <Empty
               description={
+                search || department ? 'ไม่พบผู้ใช้ที่ตรงกับเงื่อนไข' :
                 tab === 'pending' ? 'ไม่มีผู้ใช้รออนุมัติ' :
                 tab === 'active' ? 'ไม่มีผู้ใช้ที่ active' :
                 'ไม่มีผู้ใช้ที่ถูกระงับ'
@@ -173,51 +185,56 @@ export default function UserManagement() {
               style={{ marginTop: 40 }}
             />
           ) : (
-            <List
-              dataSource={users}
-              renderItem={user => (
-                <Card size="small" style={{ marginBottom: 8 }} styles={{ body: { padding: 12 } }}>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    {user.picture_url
-                      ? <Avatar src={user.picture_url} size={40} />
-                      : <Avatar icon={<UserOutlined />} size={40} />
-                    }
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <Text strong style={{ fontSize: 14 }}>{user.display_name}</Text>
-                        {user.is_admin && <Tag color="gold" style={{ marginInlineEnd: 0 }}>Admin</Tag>}
+            <>
+              <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
+                พบ {users.length} รายการ
+              </Text>
+              <List
+                dataSource={users}
+                renderItem={user => (
+                  <Card size="small" style={{ marginBottom: 8 }} styles={{ body: { padding: 12 } }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      {user.picture_url
+                        ? <Avatar src={user.picture_url} size={40} />
+                        : <Avatar icon={<UserOutlined />} size={40} />
+                      }
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <Text strong style={{ fontSize: 14 }}>{user.display_name}</Text>
+                          {user.is_admin && <Tag color="gold" style={{ marginInlineEnd: 0 }}>Admin</Tag>}
+                        </div>
+                        <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                          {user.department}
+                          {user.employee_code && ` · ${user.employee_code}`}
+                        </Text>
+                        {user.last_login_at && tab === 'active' && (
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            last login: {new Date(user.last_login_at).toLocaleString('th-TH')}
+                          </Text>
+                        )}
+                        {user.created_at && tab === 'pending' && (
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            ลงทะเบียน: {new Date(user.created_at).toLocaleString('th-TH')}
+                          </Text>
+                        )}
                       </div>
-                      <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-                        {user.department}
-                        {user.employee_code && ` · ${user.employee_code}`}
-                      </Text>
-                      {user.last_login_at && tab === 'active' && (
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                          last login: {new Date(user.last_login_at).toLocaleString('th-TH')}
-                        </Text>
-                      )}
-                      {user.created_at && tab === 'pending' && (
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                          ลงทะเบียน: {new Date(user.created_at).toLocaleString('th-TH')}
-                        </Text>
-                      )}
+                      <Space>
+                        {user.status === 'pending' && (
+                          <Button type="primary" size="small" icon={<CheckOutlined />}
+                            onClick={() => handleApprove(user)}
+                            style={{ background: COLORS.primary, borderColor: COLORS.primary }}>
+                            อนุมัติ
+                          </Button>
+                        )}
+                        <Dropdown menu={{ items: buildActionMenu(user) }} placement="bottomRight" trigger={['click']}>
+                          <Button type="text" icon={<MoreOutlined />} />
+                        </Dropdown>
+                      </Space>
                     </div>
-                    <Space>
-                      {user.status === 'pending' && (
-                        <Button type="primary" size="small" icon={<CheckOutlined />}
-                          onClick={() => handleApprove(user)}
-                          style={{ background: COLORS.primary, borderColor: COLORS.primary }}>
-                          อนุมัติ
-                        </Button>
-                      )}
-                      <Dropdown menu={{ items: buildActionMenu(user) }} placement="bottomRight" trigger={['click']}>
-                        <Button type="text" icon={<MoreOutlined />} />
-                      </Dropdown>
-                    </Space>
-                  </div>
-                </Card>
-              )}
-            />
+                  </Card>
+                )}
+              />
+            </>
           )}
         </div>
       </div>
