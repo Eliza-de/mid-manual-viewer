@@ -1,17 +1,18 @@
 /**
- * LogViewer — view auth/audit/access logs (rebranded)
+ * LogViewer — view auth/audit/access logs (Phase 7 + Phase 10 export)
  */
 
 import { useEffect, useState } from 'react';
 import { Card, Button, Tabs, Tag, message, Typography, Empty, Spin, Pagination } from 'antd';
 import {
   ArrowLeftOutlined, ReloadOutlined,
-  KeyOutlined, CrownOutlined, EyeOutlined
+  KeyOutlined, CrownOutlined, EyeOutlined, DownloadOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useNavigation } from '../../hooks/useNavigation.jsx';
 import { getIdToken } from '../../api/liff.js';
 import { getAuthLogs, getAuditLogs, getAccessLogs } from '../../api/admin.js';
+import ExportLogsModal from '../../components/ExportLogsModal.jsx';
 import { COLORS } from '../../brand.js';
 
 const { Text } = Typography;
@@ -31,12 +32,22 @@ const AUDIT_ACTION_LABELS = {
   admin_update_document: 'แก้ไขเอกสาร',
   admin_archive_document: 'Archive เอกสาร',
   admin_restore_document: 'Restore เอกสาร',
+  admin_replace_page: 'แทนหน้า',
+  admin_append_pages: 'เพิ่มหน้าท้าย',
+  admin_replace_all_pages: 'แทนทุกหน้า',
   admin_approve_user: 'อนุมัติผู้ใช้',
   admin_disable_user: 'ระงับผู้ใช้',
   admin_enable_user: 'เปิดใช้ผู้ใช้',
   admin_grant_admin: 'มอบสิทธิ์ admin',
   admin_revoke_admin: 'ถอดสิทธิ์ admin',
-  admin_reset_pin: 'Reset PIN'
+  admin_reset_pin: 'Reset PIN',
+  admin_bulk_approve_users: 'อนุมัติหลายคน',
+  admin_bulk_disable_users: 'ระงับหลายคน',
+  admin_bulk_enable_users: 'เปิดใช้หลายคน',
+  admin_bulk_archive_documents: 'Archive หลายฉบับ',
+  admin_bulk_restore_documents: 'Restore หลายฉบับ',
+  admin_bulk_update_category: 'เปลี่ยนหมวด',
+  admin_export_logs: 'Export Logs'
 };
 
 export default function LogViewer() {
@@ -46,6 +57,7 @@ export default function LogViewer() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const [exportOpen, setExportOpen] = useState(false);
 
   async function load(pageNumber = 1) {
     if (!auth.session) return;
@@ -78,7 +90,12 @@ export default function LogViewer() {
         <Button type="text" icon={<ArrowLeftOutlined />}
           onClick={() => nav.goAdminPage('dashboard')} style={{ color: '#fff' }}>กลับ</Button>
         <div style={{ color: '#fff', fontWeight: 600, fontSize: 16 }}>ดู Log</div>
-        <Button type="text" icon={<ReloadOutlined spin={loading} />} onClick={() => load(page)} style={{ color: '#fff' }} />
+        <div style={{ display: 'flex', gap: 4 }}>
+          <Button type="text" icon={<DownloadOutlined />} onClick={() => setExportOpen(true)}
+            style={{ color: '#fff' }} title="Export CSV" />
+          <Button type="text" icon={<ReloadOutlined spin={loading} />} onClick={() => load(page)}
+            style={{ color: '#fff' }} />
+        </div>
       </div>
 
       <Tabs activeKey={tab} onChange={setTab} centered style={{ background: '#fff' }}
@@ -109,6 +126,12 @@ export default function LogViewer() {
           )}
         </div>
       </div>
+
+      <ExportLogsModal
+        open={exportOpen}
+        type={tab}
+        onClose={() => setExportOpen(false)}
+      />
     </div>
   );
 }
