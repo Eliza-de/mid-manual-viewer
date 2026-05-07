@@ -49,13 +49,15 @@ export default function Reader() {
   const [jumpOpen, setJumpOpen] = useState(false);
 
   const { tabHidden } = useAntiCapture({
-    enabled: true,
-    onSuspectActivity: (event) => {
-      if (event.type !== 'tab_visible') {
-        console.warn('[anti-capture]', event);
-      }
+  enabled: true,
+  documentId: doc?.id || null,
+  pageNumber: page,
+  onSuspectActivity: (event) => {
+    if (event.type !== 'tab_visible') {
+      console.warn('[anti-capture]', event);
     }
-  });
+  }
+});
 
   const { data, loading, error } = usePageLoader(doc?.id, page, totalPages);
 
