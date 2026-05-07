@@ -1,5 +1,5 @@
 /**
- * DocumentManagement — admin document with search + filter (Phase 7 + 8)
+ * DocumentManagement — Phase 7 + 8 + 11 (replace pages)
  */
 
 import { useEffect, useState } from 'react';
@@ -9,7 +9,7 @@ import {
 } from 'antd';
 import {
   ArrowLeftOutlined, FileTextOutlined, EditOutlined, DeleteOutlined,
-  ReloadOutlined, MoreOutlined, UndoOutlined
+  ReloadOutlined, MoreOutlined, UndoOutlined, SwapOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useNavigation } from '../../hooks/useNavigation.jsx';
@@ -18,6 +18,7 @@ import {
   listAllDocuments, updateDocument, archiveDocument, restoreDocument
 } from '../../api/admin.js';
 import SearchBar from '../../components/SearchBar.jsx';
+import ReplacePagesModal from '../../components/ReplacePagesModal.jsx';
 import { COLORS } from '../../brand.js';
 
 const { Text } = Typography;
@@ -42,17 +43,19 @@ export default function DocumentManagement() {
   const [category, setCategory] = useState('');
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(false);
+
   const [editing, setEditing] = useState(null);
   const [editForm] = Form.useForm();
+
+  // NEW: replace pages modal state
+  const [replacingDoc, setReplacingDoc] = useState(null);
 
   async function load() {
     if (!auth.session) return;
     setLoading(true);
     try {
       const r = await listAllDocuments(getIdToken(), auth.session.token, {
-        status: tab,
-        search,
-        category
+        status: tab, search, category
       });
       if (r.ok) setDocs(r.documents);
       else if (r.needsLogin) auth.logout();
@@ -102,10 +105,15 @@ export default function DocumentManagement() {
     else message.error(r.error || 'ไม่สำเร็จ');
   }
 
+  function handleReplacePages(doc) {
+    setReplacingDoc(doc);
+  }
+
   function buildActionMenu(doc) {
     if (doc.status === 'active') {
       return [
-        { key: 'edit', icon: <EditOutlined />, label: 'แก้ไข', onClick: () => openEdit(doc) },
+        { key: 'edit', icon: <EditOutlined />, label: 'แก้ไขข้อมูล', onClick: () => openEdit(doc) },
+        { key: 'replacePages', icon: <SwapOutlined style={{ color: COLORS.accent }} />, label: 'แก้ไขหน้า', onClick: () => handleReplacePages(doc) },
         { type: 'divider' },
         { key: 'archive', icon: <DeleteOutlined />, label: 'Archive', danger: true, onClick: () => handleArchive(doc) }
       ];
@@ -190,7 +198,8 @@ export default function DocumentManagement() {
         </div>
       </div>
 
-      <Modal title="แก้ไขเอกสาร" open={!!editing} onCancel={() => setEditing(null)}
+      {/* Edit metadata modal */}
+      <Modal title="แก้ไขข้อมูลเอกสาร" open={!!editing} onCancel={() => setEditing(null)}
         onOk={() => editForm.submit()} okText="บันทึก" cancelText="ยกเลิก"
         okButtonProps={{ style: { background: COLORS.primary, borderColor: COLORS.primary } }}>
         <Form form={editForm} layout="vertical" onFinish={handleEditSubmit} requiredMark={false}>
@@ -215,6 +224,14 @@ export default function DocumentManagement() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Replace Pages modal (Phase 11) */}
+      <ReplacePagesModal
+        open={!!replacingDoc}
+        doc={replacingDoc}
+        onClose={() => setReplacingDoc(null)}
+        onSuccess={() => { setReplacingDoc(null); load(); }}
+      />
     </div>
   );
 }
