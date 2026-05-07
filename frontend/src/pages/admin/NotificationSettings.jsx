@@ -1,12 +1,9 @@
 /**
- * NotificationSettings — Phase 14
+ * NotificationSettings — Phases 14 + 15
  *
- * Admin can configure LINE notifications:
- *   - Master enable/disable
- *   - Channel access token (write-only)
- *   - Per-event toggles (notify_on_register, notify_on_locked)
- *   - Test send
- *   - View recipient list
+ * 4 event toggles:
+ *   Phase 14: notify_on_register, notify_on_locked
+ *   Phase 15: notify_on_user_actions, notify_on_document_actions
  */
 
 import { useEffect, useState } from 'react';
@@ -16,7 +13,7 @@ import {
 } from 'antd';
 import {
   ArrowLeftOutlined, ReloadOutlined, SendOutlined, BellOutlined,
-  KeyOutlined, UserOutlined, SaveOutlined, EyeInvisibleOutlined, EyeOutlined,
+  KeyOutlined, UserOutlined, SaveOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuth.jsx';
@@ -28,7 +25,7 @@ import {
 } from '../../api/admin.js';
 import { COLORS } from '../../brand.js';
 
-const { Text, Title, Paragraph } = Typography;
+const { Text, Title } = Typography;
 
 export default function NotificationSettings() {
   const auth = useAuth();
@@ -192,9 +189,7 @@ export default function NotificationSettings() {
             <span style={{ fontSize: 13 }}><KeyOutlined /> Channel Access Token</span>
           }>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                สถานะ:
-              </Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>สถานะ:</Text>
               {settings?.channel_token_set ? (
                 <Tag color="green" style={{ marginInlineEnd: 0 }}>✓ ตั้งค่าแล้ว</Tag>
               ) : (
@@ -247,6 +242,7 @@ export default function NotificationSettings() {
           <Card size="small" style={{ marginBottom: 12 }} title={
             <span style={{ fontSize: 13 }}>เหตุการณ์ที่จะแจ้งเตือน</span>
           }>
+            {/* Phase 14 events */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
               <div>
                 <Text strong style={{ fontSize: 13 }}>🔔 ผู้ใช้ใหม่รออนุมัติ</Text>
@@ -269,6 +265,32 @@ export default function NotificationSettings() {
                 disabled={saving || !settings?.enabled}
                 onChange={(v) => handleToggle('notify_on_locked', v)}
                 style={settings?.notify_on_locked ? { background: COLORS.primary } : {}}
+              />
+            </div>
+
+            {/* Phase 15 events */}
+            <div style={{ borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
+              <div>
+                <Text strong style={{ fontSize: 13 }}>👤 Admin actions (ผู้ใช้)</Text>
+                <div style={{ fontSize: 11, color: '#64748b' }}>อนุมัติ / ระงับ / เปิดใช้ / Reset PIN / สิทธิ์ admin</div>
+              </div>
+              <Switch
+                checked={settings?.notify_on_user_actions || false}
+                disabled={saving || !settings?.enabled}
+                onChange={(v) => handleToggle('notify_on_user_actions', v)}
+                style={settings?.notify_on_user_actions ? { background: COLORS.primary } : {}}
+              />
+            </div>
+            <div style={{ borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
+              <div>
+                <Text strong style={{ fontSize: 13 }}>📄 Admin actions (เอกสาร)</Text>
+                <div style={{ fontSize: 11, color: '#64748b' }}>เพิ่ม / แก้ไข / archive / restore / replace pages</div>
+              </div>
+              <Switch
+                checked={settings?.notify_on_document_actions || false}
+                disabled={saving || !settings?.enabled}
+                onChange={(v) => handleToggle('notify_on_document_actions', v)}
+                style={settings?.notify_on_document_actions ? { background: COLORS.primary } : {}}
               />
             </div>
           </Card>
@@ -324,6 +346,8 @@ export default function NotificationSettings() {
             )}
             <div style={{ fontSize: 11, color: '#64748b', marginTop: 8 }}>
               📌 admin ทุกคนต้องเพิ่ม Bot เป็นเพื่อนใน LINE จึงจะได้รับการแจ้งเตือน
+              <br />
+              💡 ผู้ทำ action จะไม่ได้รับ notification ของตัวเอง
             </div>
           </Card>
         </div>
