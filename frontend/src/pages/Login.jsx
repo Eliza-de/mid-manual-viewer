@@ -1,18 +1,23 @@
 /**
- * Login — PIN login (rebranded)
+ * Login — PIN login (redesigned)
+ *
+ * Lean Buddy redesign:
+ *   - Mint sage gradient background (matches Splash)
+ *   - Compact user card with avatar + role tag
+ *   - Glass-morphism PinPad
+ *   - Improved error display
  */
 
 import { useState } from 'react';
-import { Card, Typography, Alert, Space, Avatar, Statistic } from 'antd';
+import { Typography, Alert, Avatar, Statistic } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuth } from '../hooks/useAuth.jsx';
-import { verifyPin } from '../api/auth.js';
-import { saveSession } from '../api/auth.js';
+import { verifyPin, saveSession } from '../api/auth.js';
 import { getIdToken } from '../api/liff.js';
 import PinPad from '../components/PinPad.jsx';
-import { BRAND, COLORS } from '../brand.js';
+import { COLORS } from '../brand.js';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { Countdown } = Statistic;
 
 export default function Login() {
@@ -20,7 +25,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [errorShake, setErrorShake] = useState(0);
-  const [resetSignal, setResetSignal] = useState(0);
+  const [resetSignal] = useState(0);
   const [attemptsRemaining, setAttemptsRemaining] = useState(null);
 
   const isLocked = auth.status === 'locked';
@@ -59,83 +64,199 @@ export default function Login() {
     }
   }
 
+  // Locked state
   if (isLocked && lockedUntil) {
     return (
-      <div style={containerStyle}>
-        <Card>
-          <Space direction="vertical" size="large" style={{ width: '100%', textAlign: 'center' }}>
-            <LockOutlined style={{ fontSize: 48, color: '#ef4444' }} />
-            <Title level={4} style={{ margin: 0 }}>บัญชีถูก lock</Title>
-            <Text type="secondary">
-              ใส่ PIN ผิดครบจำนวนครั้งที่กำหนด<br />
-              กรุณารอ:
-            </Text>
-            <Countdown
-              value={lockedUntil}
-              format="mm:ss"
-              valueStyle={{ color: '#ef4444', fontSize: 36 }}
-              onFinish={auth.refresh}
-            />
-            <a onClick={auth.refresh} style={{ color: COLORS.primary }}>ลองใหม่</a>
-          </Space>
-        </Card>
+      <div style={pageStyle}>
+        <div style={lockedCardStyle}>
+          <LockOutlined style={{ fontSize: 48, color: '#EF4444' }} />
+          <div style={lockedTitleStyle}>บัญชีถูก lock</div>
+          <Text type="secondary" style={{ fontSize: 13, textAlign: 'center', display: 'block' }}>
+            ใส่ PIN ผิดครบจำนวนครั้งที่กำหนด<br />
+            กรุณารอ:
+          </Text>
+          <Countdown
+            value={lockedUntil}
+            format="mm:ss"
+            valueStyle={{ color: '#EF4444', fontSize: 36, fontWeight: 600 }}
+            onFinish={auth.refresh}
+          />
+          <a onClick={auth.refresh} style={{ color: COLORS.primary, fontSize: 13 }}>ลองใหม่</a>
+        </div>
       </div>
     );
   }
 
+  // Get user info
+  const displayName = auth.profile?.displayName || auth.user?.fullName || 'ผู้ใช้งาน';
+  const department = auth.user?.department || '';
+  const isAdmin = !!auth.user?.isAdmin;
+  const initials = (displayName || 'U').split(/\s+/).map(s => s[0]).join('').slice(0, 2).toUpperCase();
+
   return (
-    <div style={containerStyle}>
-      <Card>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <div style={{ textAlign: 'center' }}>
-            <Title level={3} style={{ margin: 0, color: COLORS.primary }}>
-              ใส่ PIN เพื่อเข้าใช้งาน
-            </Title>
+    <div style={pageStyle}>
+      <div style={cardStyle}>
+        {/* Title */}
+        <div style={titleStyle}>ใส่ PIN เพื่อเข้าใช้งาน</div>
+
+        {/* Compact User Card */}
+        {auth.profile && (
+          <div style={userCardStyle}>
+            {auth.profile.pictureUrl ? (
+              <Avatar src={auth.profile.pictureUrl} size={44} />
+            ) : (
+              <div style={avatarFallbackStyle}>{initials}</div>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={userNameStyle}>{displayName}</div>
+              <div style={userMetaRowStyle}>
+                {isAdmin && <span style={roleTagStyle}>Admin</span>}
+                {department && <span style={departmentStyle}>{department}</span>}
+              </div>
+            </div>
           </div>
+        )}
 
-          {auth.profile && (
-            <Card size="small" style={{ background: COLORS.bgSoft, textAlign: 'center', border: `1px solid ${COLORS.brandLight}` }}>
-              <Space direction="vertical" size={4}>
-                {auth.profile.pictureUrl
-                  ? <Avatar src={auth.profile.pictureUrl} size={48} />
-                  : <Avatar icon={<UserOutlined />} size={48} />
-                }
-                <div>
-                  <div style={{ fontWeight: 600 }}>{auth.profile.displayName}</div>
-                  {auth.user && <Text type="secondary" style={{ fontSize: 12 }}>{auth.user.department}</Text>}
-                </div>
-              </Space>
-            </Card>
-          )}
-
-          {error && (
-            <Alert
-              type="error"
-              showIcon
-              message={error}
-              description={attemptsRemaining !== null && attemptsRemaining > 0
-                ? `เหลืออีก ${attemptsRemaining} ครั้ง` : null
-              }
-              closable
-              onClose={() => setError(null)}
-            />
-          )}
-
-          <PinPad
-            onComplete={handleComplete}
-            busy={busy}
-            errorShake={errorShake}
-            resetSignal={resetSignal}
-            hint="ใส่ PIN 6 หลัก"
+        {/* Error */}
+        {error && (
+          <Alert
+            type="error"
+            showIcon
+            message={error}
+            description={attemptsRemaining !== null && attemptsRemaining > 0
+              ? `เหลืออีก ${attemptsRemaining} ครั้ง` : null
+            }
+            closable
+            onClose={() => setError(null)}
+            style={{ marginBottom: 12, borderRadius: 12 }}
           />
-        </Space>
-      </Card>
+        )}
+
+        {/* PIN Pad */}
+        <PinPad
+          onComplete={handleComplete}
+          busy={busy}
+          errorShake={errorShake}
+          resetSignal={resetSignal}
+          hint="PIN 6 หลัก"
+        />
+      </div>
     </div>
   );
 }
 
-const containerStyle = {
+// ===== Styles =====
+
+const pageStyle = {
+  position: 'fixed',
+  top: 0, left: 0, right: 0, bottom: 0,
+  width: '100vw',
+  height: '100dvh',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   padding: 16,
-  maxWidth: 480,
-  margin: '0 auto'
+  background: `linear-gradient(180deg, #F0F9F3 0%, ${COLORS.bgSoft} 50%, #DCEEE3 100%)`,
+  overflow: 'auto'
+};
+
+const cardStyle = {
+  width: '100%',
+  maxWidth: 380,
+  background: 'rgba(255, 255, 255, 0.6)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
+  border: `0.5px solid rgba(31, 77, 63, 0.1)`,
+  borderRadius: 20,
+  padding: '24px 20px',
+  boxShadow: '0 4px 24px rgba(31, 77, 63, 0.08)'
+};
+
+const titleStyle = {
+  textAlign: 'center',
+  fontSize: 16,
+  fontWeight: 600,
+  color: COLORS.primary,
+  marginBottom: 18
+};
+
+// Compact User Card
+const userCardStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  padding: '12px 14px',
+  background: 'rgba(255, 255, 255, 0.7)',
+  border: '0.5px solid rgba(31, 77, 63, 0.08)',
+  borderRadius: 14,
+  marginBottom: 16
+};
+
+const avatarFallbackStyle = {
+  width: 44,
+  height: 44,
+  borderRadius: '50%',
+  background: `linear-gradient(135deg, #5DBFA0, ${COLORS.primary})`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: 'white',
+  fontWeight: 600,
+  fontSize: 16,
+  flexShrink: 0
+};
+
+const userNameStyle = {
+  fontSize: 14,
+  fontWeight: 600,
+  color: COLORS.primary,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis'
+};
+
+const userMetaRowStyle = {
+  marginTop: 4,
+  display: 'flex',
+  gap: 8,
+  alignItems: 'center'
+};
+
+const roleTagStyle = {
+  background: '#DCEEE3',
+  color: COLORS.primary,
+  padding: '1px 8px',
+  borderRadius: 999,
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: 0.3
+};
+
+const departmentStyle = {
+  fontSize: 11,
+  color: '#6B8278'
+};
+
+// Locked state
+const lockedCardStyle = {
+  width: '100%',
+  maxWidth: 380,
+  background: 'rgba(255, 255, 255, 0.85)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
+  border: '0.5px solid rgba(239, 68, 68, 0.2)',
+  borderRadius: 20,
+  padding: '32px 24px',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 16,
+  boxShadow: '0 4px 24px rgba(239, 68, 68, 0.1)'
+};
+
+const lockedTitleStyle = {
+  fontSize: 18,
+  fontWeight: 600,
+  color: '#EF4444',
+  margin: 0
 };

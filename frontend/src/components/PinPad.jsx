@@ -1,11 +1,11 @@
 /**
- * PinPad — Custom 6-digit PIN entry component
+ * PinPad — Custom 6-digit PIN entry component (redesigned)
  *
- * Why custom not native input:
- * - Avoid iOS autofill / paste / suggest
- * - Larger touch targets
- * - Custom visual states (typing, verifying, error, locked)
- * - No soft keyboard intrusion
+ * Lean Buddy mint sage theme:
+ *   - Glass-morphism numpad
+ *   - Animated dots with bouncy scale
+ *   - Backspace icon (⌫) instead of word
+ *   - Shake on error, pulse on busy
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -18,7 +18,7 @@ export default function PinPad({
   busy = false,         // disables input while verifying
   errorShake = 0,       // increment to trigger shake animation
   resetSignal = 0,      // increment to clear pin
-  hint = ''             // optional hint text below pad
+  hint = ''             // optional hint text below dots
 }) {
   const [pin, setPin] = useState('');
   const [shaking, setShaking] = useState(false);
@@ -54,7 +54,6 @@ export default function PinPad({
     const next = pin + digit;
     setPin(next);
     if (next.length === PIN_LENGTH) {
-      // Slight delay so user sees the last dot fill in
       setTimeout(() => onComplete(next), 100);
     }
   }
@@ -62,6 +61,11 @@ export default function PinPad({
   function backspace() {
     if (busy || shaking) return;
     setPin(pin.slice(0, -1));
+  }
+
+  function clear() {
+    if (busy || shaking) return;
+    setPin('');
   }
 
   return (
@@ -74,7 +78,9 @@ export default function PinPad({
           />
         ))}
       </div>
+
       {hint && <div className="pinpad__hint">{hint}</div>}
+
       <div className="pinpad__keys">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => (
           <button
@@ -90,8 +96,9 @@ export default function PinPad({
         <button
           type="button"
           className="pinpad__key pinpad__key--util"
-          onClick={() => setPin('')}
+          onClick={clear}
           disabled={busy || pin.length === 0}
+          aria-label="เคลียร์"
         >
           เคลียร์
         </button>
@@ -105,9 +112,10 @@ export default function PinPad({
         </button>
         <button
           type="button"
-          className="pinpad__key pinpad__key--util"
+          className="pinpad__key pinpad__key--util pinpad__key--delete"
           onClick={backspace}
           disabled={busy || pin.length === 0}
+          aria-label="ลบ"
         >
           ⌫
         </button>
