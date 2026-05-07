@@ -1,19 +1,8 @@
 /**
- * Splash — Lean Buddy with full splash image + progress bar in middle
+ * Splash — Lean Buddy with progress bar pushed UP
  *
- * Layout (top to bottom):
- *   [Splash image as background — fills entire screen]
- *
- *   The image already contains:
- *     - Logo (orange/green people)
- *     - "Lean Buddy" + "By Med-healthup"
- *     - Tagline
- *     - 3 dots
- *     - Empty space in middle <-- progress bar overlaid HERE
- *     - Copyright card at bottom
- *
- *   We position the progress bar absolutely so it lands in the
- *   empty space below the dots and above the copyright card.
+ * Progress bar is now positioned ABOVE the copyright card
+ * with safe distance from bottom edge.
  */
 
 import { useEffect, useState } from 'react';
@@ -25,7 +14,6 @@ export default function Splash() {
   const auth = useAuth();
   const [progress, setProgress] = useState(0);
 
-  // Smooth ramp toward 90% while loading; jumps to 100% when ready
   useEffect(() => {
     if (auth.status === 'error') return;
 
@@ -50,7 +38,6 @@ export default function Splash() {
     return () => cancelAnimationFrame(raf);
   }, [auth.status]);
 
-  // Error state — show retry card
   if (auth.status === 'error') {
     return (
       <div style={errorContainerStyle}>
@@ -80,12 +67,6 @@ export default function Splash() {
     <div style={containerStyle}>
       <style>{keyframes}</style>
 
-      {/*
-        Progress bar positioned absolutely.
-        - top: 56vh  -> below "dots" in the splash image
-        - bottom region: above the copyright card (which is in image at ~80vh)
-        Adjust top % if needed to match your image's empty space exactly.
-      */}
       <div style={progressBoxStyle}>
         <div style={progressLabelRowStyle}>
           <span style={progressLabelStyle}>กำลังเตรียมระบบ</span>
@@ -101,8 +82,6 @@ export default function Splash() {
   );
 }
 
-// ===== Animations =====
-
 const keyframes = `
   @keyframes lb-shimmer {
     0% { transform: translateX(-100%); }
@@ -114,14 +93,11 @@ const keyframes = `
   }
 `;
 
-// ===== Styles =====
-
 const containerStyle = {
   position: 'fixed',
   top: 0, left: 0, right: 0, bottom: 0,
   width: '100vw',
   height: '100dvh',
-  // Full splash image as background
   backgroundImage: 'url(/splash-bg.jpg)',
   backgroundSize: 'cover',
   backgroundPosition: 'center top',
@@ -130,12 +106,19 @@ const containerStyle = {
   overflow: 'hidden'
 };
 
-// Position the progress bar in the empty space between dots and copyright card.
-// 56vh from top works for most phones. If your splash image varies,
-// you can change to specific px or use bottom-based positioning.
+// 🎯 ดึงขึ้นสูงขึ้น — bottom: 38% แทน 25%
+//
+// ค่า bottom เพิ่ม = progress bar ขึ้นบน
+// ค่า bottom ลด   = progress bar ลงล่าง (ทับ copyright)
+//
+// ถ้ายังไม่ตรง ปรับตาม:
+//   bottom: '32%'  -> ลงนิดหน่อย
+//   bottom: '38%'  -> default ★
+//   bottom: '42%'  -> ขึ้นอีก
+//   bottom: '45%'  -> ใกล้ dots
 const progressBoxStyle = {
   position: 'absolute',
-  top: '56vh',
+  bottom: '38%',           // ← เพิ่มจาก 25% เป็น 38% (ดึงขึ้น 13%)
   left: 0,
   right: 0,
   padding: '0 40px',
@@ -189,8 +172,6 @@ const shimmerStyle = {
   background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.7) 50%, transparent 100%)',
   animation: 'lb-shimmer 1.5s ease-in-out infinite'
 };
-
-// ===== Error state =====
 
 const errorContainerStyle = {
   position: 'fixed',
