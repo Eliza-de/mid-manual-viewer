@@ -1,20 +1,56 @@
 /**
- * Splash — initial loading screen (Lean Buddy redesign)
+ * Splash — Lean Buddy with full splash image + progress bar in middle
  *
- * Changes from previous:
- *   - Replaced book emoji with custom logo image (2 people holding hands)
- *   - Removed white Card frame — fullscreen mint sage background
- *   - Added copyright notice at bottom
- *   - Smoother loading animation with pulse + dots
+ * Layout (top to bottom):
+ *   [Splash image as background — fills entire screen]
+ *
+ *   The image already contains:
+ *     - Logo (orange/green people)
+ *     - "Lean Buddy" + "By Med-healthup"
+ *     - Tagline
+ *     - 3 dots
+ *     - Empty space in middle <-- progress bar overlaid HERE
+ *     - Copyright card at bottom
+ *
+ *   We position the progress bar absolutely so it lands in the
+ *   empty space below the dots and above the copyright card.
  */
 
+import { useEffect, useState } from 'react';
 import { Result, Button } from 'antd';
 import { useAuth } from '../hooks/useAuth.jsx';
-import { BRAND, COLORS } from '../brand.js';
+import { COLORS } from '../brand.js';
 
 export default function Splash() {
   const auth = useAuth();
+  const [progress, setProgress] = useState(0);
 
+  // Smooth ramp toward 90% while loading; jumps to 100% when ready
+  useEffect(() => {
+    if (auth.status === 'error') return;
+
+    let raf;
+    let lastTime = performance.now();
+    const target = auth.status === 'ready' ? 100 : 90;
+
+    function tick(now) {
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+
+      setProgress((p) => {
+        if (p >= target) return target;
+        const speed = (target - p) * 0.8;
+        return Math.min(target, p + speed * dt);
+      });
+
+      raf = requestAnimationFrame(tick);
+    }
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [auth.status]);
+
+  // Error state — show retry card
   if (auth.status === 'error') {
     return (
       <div style={errorContainerStyle}>
@@ -38,43 +74,27 @@ export default function Splash() {
     );
   }
 
+  const pct = Math.round(progress);
+
   return (
     <div style={containerStyle}>
-      {/* Inline keyframe animations */}
       <style>{keyframes}</style>
 
-      {/* Main content centered */}
-      <div style={contentStyle}>
-        {/* Logo with subtle pulse */}
-        <div style={logoWrapperStyle}>
-          <img
-            src="/logo-buddy.jpg"
-            alt="Lean Buddy logo"
-            style={logoImgStyle}
-          />
+      {/*
+        Progress bar positioned absolutely.
+        - top: 56vh  -> below "dots" in the splash image
+        - bottom region: above the copyright card (which is in image at ~80vh)
+        Adjust top % if needed to match your image's empty space exactly.
+      */}
+      <div style={progressBoxStyle}>
+        <div style={progressLabelRowStyle}>
+          <span style={progressLabelStyle}>กำลังเตรียมระบบ</span>
+          <span style={progressPercentStyle}>{pct}%</span>
         </div>
-
-        {/* Brand name */}
-        <div style={appNameStyle}>{BRAND.appName}</div>
-        <div style={taglineStyle}>By Med-healthup</div>
-
-        {/* Animated loading dots */}
-        <div style={dotsContainerStyle}>
-          <span style={{ ...dotStyle, animationDelay: '0s' }}></span>
-          <span style={{ ...dotStyle, animationDelay: '0.2s' }}></span>
-          <span style={{ ...dotStyle, animationDelay: '0.4s' }}></span>
-        </div>
-        <div style={loadingTextStyle}>กำลังโหลด...</div>
-      </div>
-
-      {/* Copyright notice at bottom */}
-      <div style={copyrightStyle}>
-        <div style={copyrightTextStyle}>
-          ข้อมูลในแหล่งเรียนรู้นี้ เป็นลิขสิทธิ์ของ
-          <br />
-          <strong>บริษัท เมดเฮลท์อัพ จำกัด</strong>
-          <br />
-          ห้ามลอกเลียนแบบ หรือ เผยแพร่ ก่อนได้รับอนุญาต
+        <div style={progressTrackStyle}>
+          <div style={{ ...progressFillStyle, width: `${pct}%` }}>
+            <div style={shimmerStyle}></div>
+          </div>
         </div>
       </div>
     </div>
@@ -84,15 +104,11 @@ export default function Splash() {
 // ===== Animations =====
 
 const keyframes = `
-  @keyframes leanbuddy-pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.05); opacity: 0.95; }
+  @keyframes lb-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
   }
-  @keyframes leanbuddy-bounce {
-    0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
-    40% { transform: translateY(-8px); opacity: 1; }
-  }
-  @keyframes leanbuddy-fadein {
+  @keyframes lb-fadein {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
   }
@@ -105,101 +121,77 @@ const containerStyle = {
   top: 0, left: 0, right: 0, bottom: 0,
   width: '100vw',
   height: '100dvh',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '40px 20px 32px',
-  // Soft mint gradient — no harsh card edges
-  background: `linear-gradient(180deg, #E8F5EE 0%, ${COLORS.bgSoft} 50%, #E8F5EE 100%)`,
+  // Full splash image as background
+  backgroundImage: 'url(/splash-bg.jpg)',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center top',
+  backgroundRepeat: 'no-repeat',
+  backgroundColor: '#E8F5EE',
   overflow: 'hidden'
 };
 
-const contentStyle = {
-  flex: 1,
+// Position the progress bar in the empty space between dots and copyright card.
+// 56vh from top works for most phones. If your splash image varies,
+// you can change to specific px or use bottom-based positioning.
+const progressBoxStyle = {
+  position: 'absolute',
+  top: '56vh',
+  left: 0,
+  right: 0,
+  padding: '0 40px',
+  animation: 'lb-fadein 0.6s ease-out'
+};
+
+const progressLabelRowStyle = {
   display: 'flex',
-  flexDirection: 'column',
+  justifyContent: 'space-between',
   alignItems: 'center',
-  justifyContent: 'center',
-  width: '100%',
-  maxWidth: 400,
-  animation: 'leanbuddy-fadein 0.6s ease-out'
+  marginBottom: 8
 };
 
-const logoWrapperStyle = {
-  width: 180,
-  height: 180,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  marginBottom: 20,
-  animation: 'leanbuddy-pulse 2.4s ease-in-out infinite'
-};
-
-const logoImgStyle = {
-  width: '100%',
-  height: '100%',
-  objectFit: 'contain',
-  // Soft shadow that blends with mint bg
-  filter: 'drop-shadow(0 4px 12px rgba(31, 77, 63, 0.12))'
-};
-
-const appNameStyle = {
-  fontSize: 32,
-  fontWeight: 700,
+const progressLabelStyle = {
+  fontSize: 12,
   color: COLORS.primary,
-  letterSpacing: '-0.5px',
-  marginBottom: 4
+  opacity: 0.7,
+  fontWeight: 500
 };
 
-const taglineStyle = {
-  fontSize: 14,
-  color: COLORS.primary,
-  opacity: 0.6,
-  fontWeight: 400,
-  marginBottom: 36
-};
-
-const dotsContainerStyle = {
-  display: 'flex',
-  gap: 8,
-  marginBottom: 12,
-  height: 16,
-  alignItems: 'center'
-};
-
-const dotStyle = {
-  width: 10,
-  height: 10,
-  borderRadius: '50%',
-  background: COLORS.primary,
-  display: 'inline-block',
-  animation: 'leanbuddy-bounce 1.4s ease-in-out infinite'
-};
-
-const loadingTextStyle = {
+const progressPercentStyle = {
   fontSize: 13,
   color: COLORS.primary,
-  opacity: 0.6,
-  fontWeight: 400
+  fontWeight: 700,
+  fontVariantNumeric: 'tabular-nums'
 };
 
-const copyrightStyle = {
-  width: '100%',
-  maxWidth: 480,
-  padding: '16px 20px',
-  textAlign: 'center'
+const progressTrackStyle = {
+  height: 6,
+  background: 'rgba(31, 77, 63, 0.12)',
+  borderRadius: 999,
+  overflow: 'hidden',
+  position: 'relative'
 };
 
-const copyrightTextStyle = {
-  fontSize: 11,
-  color: COLORS.primary,
-  opacity: 0.5,
-  lineHeight: 1.7,
-  letterSpacing: 0.2
+const progressFillStyle = {
+  height: '100%',
+  background: `linear-gradient(90deg, #5DBFA0 0%, ${COLORS.primary} 100%)`,
+  borderRadius: 999,
+  position: 'relative',
+  overflow: 'hidden',
+  transition: 'width 0.2s ease-out'
 };
 
-// Error state styles (kept simple white card)
+const shimmerStyle = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: 50,
+  height: '100%',
+  background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.7) 50%, transparent 100%)',
+  animation: 'lb-shimmer 1.5s ease-in-out infinite'
+};
+
+// ===== Error state =====
+
 const errorContainerStyle = {
   position: 'fixed',
   top: 0, left: 0, right: 0, bottom: 0,
@@ -216,5 +208,6 @@ const errorCardStyle = {
   background: '#fff',
   borderRadius: 12,
   boxShadow: '0 2px 16px rgba(31, 77, 63, 0.08)',
-  border: `1px solid ${COLORS.brandLight}`
+  border: `1px solid ${COLORS.brandLight}`,
+  padding: 24
 };
