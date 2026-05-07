@@ -1,5 +1,7 @@
 /**
  * Home — main router
+ *
+ * Phase 13/14: added analytics + notifications admin pages
  */
 
 import { useState } from 'react';
@@ -12,6 +14,8 @@ import DocumentUpload from './admin/DocumentUpload.jsx';
 import UserManagement from './admin/UserManagement.jsx';
 import DocumentManagement from './admin/DocumentManagement.jsx';
 import LogViewer from './admin/LogViewer.jsx';
+import Analytics from './admin/Analytics.jsx';
+import NotificationSettings from './admin/NotificationSettings.jsx';
 
 export default function Home() {
   return (
@@ -30,6 +34,8 @@ function HomeInner() {
     if (nav.adminPage === 'users') return <UserManagement />;
     if (nav.adminPage === 'docs') return <DocumentManagement />;
     if (nav.adminPage === 'logs') return <LogViewer />;
+    if (nav.adminPage === 'analytics') return <Analytics />;
+    if (nav.adminPage === 'notifications') return <NotificationSettings />;
     return <AdminDashboard />;
   }
 

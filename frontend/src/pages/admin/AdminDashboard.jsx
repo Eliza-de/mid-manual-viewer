@@ -1,5 +1,6 @@
 /**
- * AdminDashboard — rebranded (Lean Buddy mint theme)
+ * AdminDashboard — Phases 7 + 13 + 14
+ * Added: Analytics + Notifications
  */
 
 import { useEffect, useState } from 'react';
@@ -7,7 +8,8 @@ import { Card, Typography, Button, Row, Col, Tag, Spin, Statistic, Badge, messag
 import {
   ArrowLeftOutlined, PlusOutlined, UsergroupAddOutlined,
   FileTextOutlined, HistoryOutlined, RightOutlined,
-  ReloadOutlined, TeamOutlined, EyeOutlined, LoginOutlined
+  ReloadOutlined, TeamOutlined, EyeOutlined, LoginOutlined,
+  BarChartOutlined, BellOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useNavigation } from '../../hooks/useNavigation.jsx';
@@ -29,12 +31,9 @@ export default function AdminDashboard() {
     try {
       const idToken = getIdToken();
       const r = await getStats(idToken, auth.session.token);
-      if (r.ok) {
-        setStats(r.stats);
-      } else {
-        if (r.needsLogin) auth.logout();
-        else message.error(r.error || 'โหลดข้อมูลไม่สำเร็จ');
-      }
+      if (r.ok) setStats(r.stats);
+      else if (r.needsLogin) auth.logout();
+      else message.error(r.error || 'โหลดข้อมูลไม่สำเร็จ');
     } catch (err) {
       message.error(err.message || 'เกิดข้อผิดพลาด');
     } finally {
@@ -42,9 +41,7 @@ export default function AdminDashboard() {
     }
   }
 
-  useEffect(() => {
-    loadStats();
-  }, []);
+  useEffect(() => { loadStats(); }, []);
 
   const cards = [
     {
@@ -70,11 +67,25 @@ export default function AdminDashboard() {
       onClick: () => nav.goAdminPage('docs')
     },
     {
+      key: 'analytics',
+      icon: <BarChartOutlined style={{ fontSize: 22, color: '#8b5cf6' }} />,
+      title: 'Analytics',
+      desc: 'สถิติการใช้งาน + charts',
+      onClick: () => nav.goAdminPage('analytics')
+    },
+    {
       key: 'logs',
       icon: <HistoryOutlined style={{ fontSize: 22, color: '#6366f1' }} />,
       title: 'ดู Log',
-      desc: 'Auth / Audit / Access logs',
+      desc: 'Auth / Audit / Access logs · Export CSV',
       onClick: () => nav.goAdminPage('logs')
+    },
+    {
+      key: 'notifications',
+      icon: <BellOutlined style={{ fontSize: 22, color: '#ec4899' }} />,
+      title: 'การแจ้งเตือน',
+      desc: 'ตั้งค่า LINE notifications',
+      onClick: () => nav.goAdminPage('notifications')
     }
   ];
 
@@ -97,7 +108,9 @@ export default function AdminDashboard() {
             <Title level={5} style={{ margin: '4px 0', color: COLORS.primary }}>
               {auth.user?.displayName} <Tag color="gold">Admin</Tag>
             </Title>
-            <Text type="secondary" style={{ fontSize: 12 }}>{auth.user?.department}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {auth.user?.nickname || auth.user?.fullName || auth.user?.department}
+            </Text>
           </Card>
 
           {loading && !stats ? (
