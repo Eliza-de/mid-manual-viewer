@@ -1,0 +1,21 @@
+# Cloudflare Pages headers
+# Place at: frontend/public/_headers
+# Forces fresh HTML, allows JS/CSS caching (because filename has hash)
+
+/*
+  X-Frame-Options: ALLOWALL
+
+# HTML must always be fresh — never cache
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
+# Hashed assets can cache forever (filename changes when content changes)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
