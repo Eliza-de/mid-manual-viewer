@@ -1,11 +1,7 @@
 /**
- * Login — PIN login (redesigned)
- *
- * Lean Buddy redesign:
- *   - Mint sage gradient background (matches Splash)
- *   - Compact user card with avatar + role tag
- *   - Glass-morphism PinPad
- *   - Improved error display
+ * Login — VERSION 2 REDESIGN (Lean Buddy mint sage)
+ * BUILD: 2026-05-07-V2
+ * If you see this comment in your file, the new version is loaded.
  */
 
 import { useState } from 'react';
@@ -21,6 +17,12 @@ const { Text } = Typography;
 const { Countdown } = Statistic;
 
 export default function Login() {
+  // ⚡ NEW VERSION MARKER — this log appears in browser console
+  if (typeof window !== 'undefined' && !window.__login_v2_loaded) {
+    console.log('%c[Login V2 LOADED]', 'background:#1F4D3F;color:#A4DFCB;padding:4px 8px;border-radius:4px');
+    window.__login_v2_loaded = true;
+  }
+
   const auth = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -96,10 +98,8 @@ export default function Login() {
   return (
     <div style={pageStyle}>
       <div style={cardStyle}>
-        {/* Title */}
         <div style={titleStyle}>ใส่ PIN เพื่อเข้าใช้งาน</div>
 
-        {/* Compact User Card */}
         {auth.profile && (
           <div style={userCardStyle}>
             {auth.profile.pictureUrl ? (
@@ -117,7 +117,6 @@ export default function Login() {
           </div>
         )}
 
-        {/* Error */}
         {error && (
           <Alert
             type="error"
@@ -132,7 +131,6 @@ export default function Login() {
           />
         )}
 
-        {/* PIN Pad */}
         <PinPad
           onComplete={handleComplete}
           busy={busy}
@@ -144,8 +142,6 @@ export default function Login() {
     </div>
   );
 }
-
-// ===== Styles =====
 
 const pageStyle = {
   position: 'fixed',
@@ -166,7 +162,7 @@ const cardStyle = {
   background: 'rgba(255, 255, 255, 0.6)',
   backdropFilter: 'blur(12px)',
   WebkitBackdropFilter: 'blur(12px)',
-  border: `0.5px solid rgba(31, 77, 63, 0.1)`,
+  border: '0.5px solid rgba(31, 77, 63, 0.1)',
   borderRadius: 20,
   padding: '24px 20px',
   boxShadow: '0 4px 24px rgba(31, 77, 63, 0.08)'
@@ -180,7 +176,6 @@ const titleStyle = {
   marginBottom: 18
 };
 
-// Compact User Card
 const userCardStyle = {
   display: 'flex',
   alignItems: 'center',
@@ -237,7 +232,6 @@ const departmentStyle = {
   color: '#6B8278'
 };
 
-// Locked state
 const lockedCardStyle = {
   width: '100%',
   maxWidth: 380,

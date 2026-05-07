@@ -1,6 +1,5 @@
-/**
- * PinPad — redesigned for Lean Buddy mint sage theme
- */
+/* PinPad — VERSION 2 REDESIGN (Lean Buddy mint sage) */
+/* BUILD: 2026-05-07-V2 */
 
 .pinpad {
   user-select: none;
@@ -10,7 +9,10 @@
   margin: 0 auto;
 }
 
-/* ===== Dots indicator ===== */
+.pinpad--v2 {
+  /* marker — confirms new CSS loaded */
+}
+
 .pinpad__dots {
   display: flex;
   justify-content: center;
@@ -43,7 +45,6 @@
   min-height: 18px;
 }
 
-/* ===== Key grid ===== */
 .pinpad__keys {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -85,7 +86,6 @@
   cursor: not-allowed;
 }
 
-/* Action buttons (clear, backspace) */
 .pinpad__key--util {
   font-size: 13px;
   color: #6B8278;
@@ -110,7 +110,6 @@
   color: #A53838;
 }
 
-/* ===== Shake animation on error ===== */
 .pinpad--shake .pinpad__dots {
   animation: pinpad-shake 400ms ease;
 }
@@ -132,7 +131,6 @@
   80% { transform: translateX(6px); }
 }
 
-/* ===== Busy state ===== */
 .pinpad--busy {
   opacity: 0.7;
   pointer-events: none;

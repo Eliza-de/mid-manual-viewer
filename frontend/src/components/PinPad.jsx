@@ -1,11 +1,7 @@
 /**
- * PinPad — Custom 6-digit PIN entry component (redesigned)
- *
- * Lean Buddy mint sage theme:
- *   - Glass-morphism numpad
- *   - Animated dots with bouncy scale
- *   - Backspace icon (⌫) instead of word
- *   - Shake on error, pulse on busy
+ * PinPad — VERSION 2 REDESIGN (Lean Buddy mint sage)
+ * BUILD: 2026-05-07-V2
+ * If you see this comment in your file, the new version is loaded.
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -14,18 +10,23 @@ import './PinPad.css';
 const PIN_LENGTH = 6;
 
 export default function PinPad({
-  onComplete,           // (pin) => void — called when 6 digits entered
-  busy = false,         // disables input while verifying
-  errorShake = 0,       // increment to trigger shake animation
-  resetSignal = 0,      // increment to clear pin
-  hint = ''             // optional hint text below dots
+  onComplete,
+  busy = false,
+  errorShake = 0,
+  resetSignal = 0,
+  hint = ''
 }) {
+  // ⚡ NEW VERSION MARKER — this log appears in browser console
+  if (typeof window !== 'undefined' && !window.__pinpad_v2_loaded) {
+    console.log('%c[PinPad V2 LOADED]', 'background:#1F4D3F;color:#A4DFCB;padding:4px 8px;border-radius:4px');
+    window.__pinpad_v2_loaded = true;
+  }
+
   const [pin, setPin] = useState('');
   const [shaking, setShaking] = useState(false);
   const lastShakeRef = useRef(0);
   const lastResetRef = useRef(0);
 
-  // Trigger shake animation on errorShake increment
   useEffect(() => {
     if (errorShake !== lastShakeRef.current) {
       lastShakeRef.current = errorShake;
@@ -40,7 +41,6 @@ export default function PinPad({
     }
   }, [errorShake]);
 
-  // Clear pin on reset signal
   useEffect(() => {
     if (resetSignal !== lastResetRef.current) {
       lastResetRef.current = resetSignal;
@@ -69,7 +69,7 @@ export default function PinPad({
   }
 
   return (
-    <div className={`pinpad ${shaking ? 'pinpad--shake' : ''} ${busy ? 'pinpad--busy' : ''}`}>
+    <div className={`pinpad pinpad--v2 ${shaking ? 'pinpad--shake' : ''} ${busy ? 'pinpad--busy' : ''}`}>
       <div className="pinpad__dots">
         {Array.from({ length: PIN_LENGTH }).map((_, i) => (
           <div
