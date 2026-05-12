@@ -1,71 +1,46 @@
 /**
- * BulkActionBar — floating action bar shown when items are selected.
- *
- * Usage:
- *   <BulkActionBar
- *     selectedCount={selected.length}
- *     onClear={() => setSelected([])}
- *     actions={[
- *       { key: 'archive', icon: <Icon/>, label: 'Archive', danger: true, onClick: ... }
- *     ]}
- *   />
+ * BulkActionBar — Sticky bottom bar for bulk actions
  */
+import { Button, Space } from 'antd';
+import { COLORS, SHADOWS } from '../brand.js';
 
-import { Button, Space, Typography } from 'antd';
-import { CloseOutlined } from '@ant-design/icons';
-import { COLORS } from '../brand.js';
-
-const { Text } = Typography;
-
-export default function BulkActionBar({ selectedCount, onClear, actions = [] }) {
-  if (selectedCount === 0) return null;
-
+export default function BulkActionBar({ count, onClear, actions = [] }) {
+  if (count === 0) return null;
   return (
-    <div style={containerStyle}>
-      <div style={innerStyle}>
-        <Space size={8} style={{ flex: 1 }}>
-          <Button type="text" size="small" icon={<CloseOutlined />} onClick={onClear} style={{ color: '#fff' }} />
-          <Text strong style={{ color: '#fff', fontSize: 14 }}>
-            เลือก {selectedCount} รายการ
-          </Text>
-        </Space>
-        <Space size={4} wrap={false} style={{ overflowX: 'auto' }}>
-          {actions.map(a => (
-            <Button
-              key={a.key}
-              size="small"
-              icon={a.icon}
-              onClick={a.onClick}
-              danger={a.danger}
-              type={a.danger ? 'primary' : 'default'}
-              loading={a.loading}
-              disabled={a.disabled}
-            >
-              {a.label}
-            </Button>
-          ))}
-        </Space>
-      </div>
+    <div
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: COLORS.primaryDark,
+        color: '#fff',
+        padding: '12px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        boxShadow: '0 -4px 12px rgba(0,0,0,0.15)',
+        zIndex: 1000,
+      }}
+    >
+      <span style={{ flex: 1, fontWeight: 600 }}>
+        เลือก {count} รายการ
+      </span>
+      <Space>
+        {actions.map((a, i) => (
+          <Button
+            key={i}
+            type={a.type || 'default'}
+            danger={a.danger}
+            icon={a.icon}
+            onClick={a.onClick}
+            loading={a.loading}
+          >
+            {a.label}
+          </Button>
+        ))}
+        <Button onClick={onClear} ghost>ยกเลิก</Button>
+      </Space>
     </div>
   );
 }
-
-const containerStyle = {
-  position: 'fixed',
-  bottom: 0,
-  left: 0,
-  right: 0,
-  zIndex: 200,
-  padding: '8px 8px max(8px, env(safe-area-inset-bottom)) 8px',
-  background: COLORS.primary,
-  boxShadow: '0 -2px 8px rgba(0,0,0,0.15)',
-  animation: 'slideUp 0.2s ease-out'
-};
-
-const innerStyle = {
-  maxWidth: 480,
-  margin: '0 auto',
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8
-};
