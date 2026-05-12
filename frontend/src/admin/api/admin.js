@@ -56,43 +56,30 @@ async function adminCall(path, payload = {}) {
 }
 
 /**
- * Multipart admin call — for file uploads.
- * adminToken goes into FormData; backend reads from form field.
+ * Encode a File/Blob to base64 (no data: prefix).
  */
-async function adminMultipart(path, formData) {
-  const adminToken = getAdminToken();
-  if (!adminToken) {
-    handleAuthFailure();
-    throw new Error('Not logged in');
-  }
-  formData.append('adminToken', adminToken);
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error('FileReader error'));
+    reader.readAsDataURL(file);
+  });
+}
 
-  let resp;
-  try {
-    resp = await fetch(`${API_BASE}${path}`, {
-      method: 'POST',
-      body: formData
-    });
-  } catch (e) {
-    throw new Error('Network error: ' + e.message);
+async function filesToBase64Pages(files) {
+  const list = Array.isArray(files) ? files : [files];
+  const out = [];
+  for (const f of list) {
+    if (!f) continue;
+    const data = await fileToBase64(f);
+    out.push({ data });
   }
-
-  let data;
-  try {
-    data = await resp.json();
-  } catch {
-    throw new Error(`API error ${resp.status}: invalid JSON`);
-  }
-
-  if (!resp.ok || data.ok === false) {
-    if (resp.status === 401 && data.needsLogin) {
-      handleAuthFailure();
-      throw new Error('Session expired');
-    }
-    throw new Error(data.error || `API error ${resp.status}`);
-  }
-
-  return data;
+  return out;
 }
 
 /**
@@ -207,41 +194,42 @@ export const bulkArchiveDocuments  = (document_ids) => adminCall('/api/admin/doc
 export const bulkRestoreDocuments  = (document_ids) => adminCall('/api/admin/documents/bulkRestore', { document_ids });
 export const bulkUpdateCategory    = (document_ids, category) => adminCall('/api/admin/documents/bulkUpdateCategory', { document_ids, category });
 
-// Multipart uploads
+// File uploads — backend expects base64 in JSON, NOT multipart.
 export async function createDocument(doc, files) {
-  const fd = new FormData();
-  fd.append('title', doc.title || '');
-  fd.append('form_code', doc.form_code || doc.code || '');
-  fd.append('category', doc.category || '');
-  if (doc.description != null) fd.append('description', doc.description);
-  if (doc.sort_order != null) fd.append('sort_order', doc.sort_order);
-  const list = Array.isArray(files) ? files : (files ? [files] : []);
-  for (const f of list) fd.append('files', f);
-  return adminMultipart('/api/admin/documents/create', fd);
+  const pages = await filesToBase64Pages(files);
+  return adminCall('/api/admin/documents/create', {
+    title: doc.title || '',
+    form_code: doc.form_code || doc.code || '',
+    category: doc.category || '',
+    description: doc.description || '',
+    sort_order: doc.sort_order != null ? Number(doc.sort_order) : 999,
+    pages,
+  });
 }
 
 export async function replacePage(docId, pageNumber, file) {
-  const fd = new FormData();
-  fd.append('id', docId);
-  fd.append('page_number', pageNumber);
-  fd.append('file', file);
-  return adminMultipart('/api/admin/documents/replacePage', fd);
+  const data = await fileToBase64(file);
+  return adminCall('/api/admin/documents/replacePage', {
+    id: docId,
+    page_number: Number(pageNumber),
+    data,
+  });
 }
 
 export async function appendPages(docId, files) {
-  const fd = new FormData();
-  fd.append('id', docId);
-  const list = Array.isArray(files) ? files : [files];
-  for (const f of list) fd.append('files', f);
-  return adminMultipart('/api/admin/documents/appendPages', fd);
+  const pages = await filesToBase64Pages(files);
+  return adminCall('/api/admin/documents/appendPages', {
+    id: docId,
+    pages,
+  });
 }
 
 export async function replaceAllPages(docId, files) {
-  const fd = new FormData();
-  fd.append('id', docId);
-  const list = Array.isArray(files) ? files : [files];
-  for (const f of list) fd.append('files', f);
-  return adminMultipart('/api/admin/documents/replaceAllPages', fd);
+  const pages = await filesToBase64Pages(files);
+  return adminCall('/api/admin/documents/replaceAllPages', {
+    id: docId,
+    pages,
+  });
 }
 
 // ============================================
