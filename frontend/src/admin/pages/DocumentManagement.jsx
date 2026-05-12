@@ -15,10 +15,13 @@ import {
   FileTextOutlined, EditOutlined, DeleteOutlined,
   ReloadOutlined, MoreOutlined, UndoOutlined, SwapOutlined, TagOutlined,
   SearchOutlined, UploadOutlined, InboxOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import {
   listAllDocuments, updateDocument, archiveDocument, restoreDocument,
-  bulkArchiveDocuments, bulkRestoreDocuments, bulkUpdateCategory,
+  deleteDocument,
+  bulkArchiveDocuments, bulkRestoreDocuments, bulkDeleteDocuments,
+  bulkUpdateCategory,
   replacePage, appendPages, replaceAllPages,
 } from '../api/admin';
 
@@ -138,6 +141,36 @@ export default function DocumentManagement() {
     } catch (err) { message.error(err.message || 'ไม่สำเร็จ'); }
   }
 
+  async function handleDelete(doc) {
+    Modal.confirm({
+      title: 'ลบเอกสารถาวร',
+      icon: <ExclamationCircleOutlined style={{ color: '#EF4444' }} />,
+      content: (
+        <div>
+          <p style={{ marginTop: 0 }}>
+            ลบ "<strong>{doc.title}</strong>" <strong style={{ color: '#EF4444' }}>ถาวร</strong> ({doc.page_count} หน้า)?
+          </p>
+          <div style={{
+            background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8,
+            padding: 10, fontSize: 12, color: '#991B1B', marginTop: 8,
+          }}>
+            ⚠️ การกระทำนี้ <strong>กู้คืนไม่ได้</strong> — จะลบทั้งข้อมูลเอกสารและไฟล์รูปทุกหน้าออกจาก R2
+          </div>
+        </div>
+      ),
+      okText: 'ลบถาวร', okType: 'danger',
+      okButtonProps: { danger: true },
+      cancelText: 'ยกเลิก',
+      async onOk() {
+        try {
+          const r = await deleteDocument(doc.id);
+          message.success(`ลบสำเร็จ (${r.pages_deleted ?? doc.page_count} หน้า)`);
+          load();
+        } catch (err) { message.error(err.message || 'ลบไม่สำเร็จ'); }
+      },
+    });
+  }
+
   async function runBulk(action, label, danger = false) {
     const ids = Array.from(selected.keys());
     if (ids.length === 0) return;
@@ -188,10 +221,57 @@ export default function DocumentManagement() {
       ];
     }
     if (tab === 'archived') {
-      return [{ key: 'res', icon: <UndoOutlined />, label: 'Restore ทั้งหมด', onClick: () => runBulk(bulkRestoreDocuments, 'Restore'), loading: bulkLoading }];
+      return [
+        { key: 'res', icon: <UndoOutlined />, label: 'Restore ทั้งหมด', onClick: () => runBulk(bulkRestoreDocuments, 'Restore'), loading: bulkLoading },
+        { key: 'del', icon: <DeleteOutlined />, label: 'ลบถาวรทั้งหมด', danger: true, onClick: () => handleBulkDelete(), loading: bulkLoading },
+      ];
     }
     return [];
   }, [tab, bulkLoading, selectedCount]);
+
+  function handleBulkDelete() {
+    const ids = Array.from(selected.keys());
+    if (ids.length === 0) return;
+    const docs = ids.map(id => selected.get(id)).filter(Boolean);
+    const totalPages = docs.reduce((s, d) => s + (d.page_count || 0), 0);
+
+    Modal.confirm({
+      title: `ลบถาวร ${ids.length} เอกสาร`,
+      icon: <ExclamationCircleOutlined style={{ color: '#EF4444' }} />,
+      content: (
+        <div>
+          <p style={{ marginTop: 0 }}>
+            ลบ <strong>{ids.length} เอกสาร</strong> ({totalPages} หน้า) <strong style={{ color: '#EF4444' }}>ถาวร</strong>?
+          </p>
+          <div style={{
+            background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8,
+            padding: 10, fontSize: 12, color: '#991B1B', marginTop: 8,
+          }}>
+            ⚠️ การกระทำนี้ <strong>กู้คืนไม่ได้</strong> — จะลบทั้งข้อมูลเอกสารและไฟล์รูปทุกหน้าออกจาก R2
+          </div>
+        </div>
+      ),
+      okText: 'ลบถาวร', okType: 'danger',
+      okButtonProps: { danger: true },
+      cancelText: 'ยกเลิก',
+      async onOk() {
+        setBulkLoading(true);
+        try {
+          const r = await bulkDeleteDocuments(ids);
+          const msg = `✅ ลบสำเร็จ ${r.succeeded ?? ids.length}` +
+            (r.pages_deleted ? ` · ${r.pages_deleted} หน้า` : '') +
+            (r.failed_count > 0 ? ` · ⚠️ ผิดพลาด ${r.failed_count}` : '');
+          message.success(msg, 4);
+          setSelected(new Map());
+          load();
+        } catch (err) {
+          message.error(err.message || 'ลบไม่สำเร็จ');
+        } finally {
+          setBulkLoading(false);
+        }
+      },
+    });
+  }
 
   function buildActionMenu(doc) {
     if (doc.status === 'active') {
@@ -202,7 +282,11 @@ export default function DocumentManagement() {
         { key: 'archive', icon: <DeleteOutlined />, label: 'Archive', danger: true, onClick: () => handleArchive(doc) },
       ];
     }
-    return [{ key: 'restore', icon: <UndoOutlined />, label: 'Restore', onClick: () => handleRestore(doc) }];
+    return [
+      { key: 'restore', icon: <UndoOutlined />, label: 'Restore', onClick: () => handleRestore(doc) },
+      { type: 'divider' },
+      { key: 'delete', icon: <DeleteOutlined />, label: 'ลบถาวร', danger: true, onClick: () => handleDelete(doc) },
+    ];
   }
 
   return (

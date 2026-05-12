@@ -192,6 +192,7 @@ export const restoreDocument     = (id) => adminCall('/api/admin/documents/resto
 export const deleteDocument      = (id) => adminCall('/api/admin/documents/delete', { id });
 export const bulkArchiveDocuments  = (document_ids) => adminCall('/api/admin/documents/bulkArchive', { document_ids });
 export const bulkRestoreDocuments  = (document_ids) => adminCall('/api/admin/documents/bulkRestore', { document_ids });
+export const bulkDeleteDocuments   = (document_ids) => adminCall('/api/admin/documents/bulkDelete', { document_ids });
 export const bulkUpdateCategory    = (document_ids, category) => adminCall('/api/admin/documents/bulkUpdateCategory', { document_ids, category });
 
 // File uploads — backend expects base64 in JSON, NOT multipart.
