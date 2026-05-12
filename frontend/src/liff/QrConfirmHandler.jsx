@@ -1,32 +1,33 @@
 /**
- * QR Confirm Handler — runs in LIFF after admin scans QR
+ * QR Confirm Handler — Phase 17
  *
- * When LIFF URL has ?pair=xxx:
- *   1. Block normal LIFF UI
- *   2. Call /api/admin/qr/confirm with LIFF idToken
- *   3. Show success/fail message
- *   4. Tell user to return to desktop
+ * Runs in LIFF after admin scans QR from desktop.
+ * Calls /api/admin/qr/confirm with LIFF idToken + session token.
  *
- * Must be called AFTER LIFF init + user is logged in (LIFF auto-login if needed)
+ * Required state when this renders:
+ *   - LIFF initialized
+ *   - User authenticated (PIN passed) — handled by App.jsx
  */
 
 import { useState, useEffect } from 'react';
-import { apiCall } from '../api';   // existing LIFF api client
+import { post } from '../api/client.js';
+import { getIdToken } from '../api/liff.js';
+import { loadSession } from '../api/auth.js';
+import { useAuth } from '../hooks/useAuth.jsx';
 
 // Theme tokens
 const MINT_DARK = '#1F4D3F';
 const MINT_MID = '#5DBFA0';
 const MINT_SOFT = '#DCEEE3';
 const MINT_MUTED = '#6B8278';
-const ACCENT_ORANGE = '#E8965B';
 const ERROR_RED = '#EF4444';
 const HEADER_GRADIENT = `linear-gradient(135deg, ${MINT_MID} 0%, ${MINT_DARK} 100%)`;
 
 export default function QrConfirmHandler({ pairCode }) {
+  const { user } = useAuth();
   const [state, setState] = useState({
-    status: 'confirming',   // confirming | success | error
+    status: 'confirming',     // confirming | success | error
     error: null,
-    displayName: null,
   });
 
   useEffect(() => {
@@ -34,16 +35,30 @@ export default function QrConfirmHandler({ pairCode }) {
 
     (async () => {
       try {
-        const r = await apiCall('/api/admin/qr/confirm', { pairCode });
+        const idToken = getIdToken();
+        if (!idToken) {
+          throw new Error('ไม่พบ LINE ID Token');
+        }
+
+        const session = loadSession();
+        const sessionToken = session?.token || null;
+
+        const r = await post('/api/admin/qr/confirm', {
+          idToken,
+          sessionToken,
+          payload: { pairCode }
+        });
+
         if (canceled) return;
+
         if (r.ok) {
-          setState({ status: 'success', error: null, displayName: r.displayName });
+          setState({ status: 'success', error: null });
         } else {
-          throw new Error(r.error || 'Confirm failed');
+          throw new Error(r.error || 'ยืนยันไม่สำเร็จ');
         }
       } catch (e) {
         if (canceled) return;
-        setState({ status: 'error', error: e.message, displayName: null });
+        setState({ status: 'error', error: e.message });
       }
     })();
 
@@ -125,9 +140,9 @@ export default function QrConfirmHandler({ pairCode }) {
               <div style={{ fontSize: 18, color: MINT_DARK, fontWeight: 700, marginBottom: 6 }}>
                 เข้าสู่ระบบสำเร็จ
               </div>
-              {state.displayName && (
+              {user?.displayName && (
                 <div style={{ fontSize: 13, color: MINT_MUTED, marginBottom: 24 }}>
-                  ผู้ใช้: <strong style={{ color: MINT_DARK }}>{state.displayName}</strong>
+                  ผู้ใช้: <strong style={{ color: MINT_DARK }}>{user.displayName}</strong>
                 </div>
               )}
 
