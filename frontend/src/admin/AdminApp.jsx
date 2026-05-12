@@ -15,6 +15,7 @@ import QrLogin from './pages/QrLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import UserManagement from './pages/UserManagement';
 import DocumentManagement from './pages/DocumentManagement';
+import DocumentUpload from './pages/DocumentUpload';
 import Analytics from './pages/Analytics';
 import LogViewer from './pages/LogViewer';
 import NotificationSettings from './pages/NotificationSettings';
@@ -29,6 +30,7 @@ const HEADER_GRADIENT = `linear-gradient(135deg, ${MINT_MID} 0%, ${MINT_DARK} 10
 // ===== Pages =====
 const PAGES = {
   dashboard: { label: 'Dashboard', icon: '📊', component: AdminDashboard },
+  upload:    { label: 'เพิ่มเอกสาร', icon: '📤', component: DocumentUpload },
   users:     { label: 'Users',     icon: '👥', component: UserManagement },
   documents: { label: 'Documents', icon: '📄', component: DocumentManagement },
   analytics: { label: 'Analytics', icon: '📈', component: Analytics },

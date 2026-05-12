@@ -45,6 +45,10 @@ async function adminCall(path, payload = {}) {
       handleAuthFailure();
       throw new Error('Session expired');
     }
+    if (resp.status === 401) {
+      console.warn('[admin] 401 on', path, '— backend อาจยังไม่รองรับ adminToken บน path นี้', data);
+      throw new Error(data.error || `Backend ปฏิเสธ adminToken บน ${path} (401)`);
+    }
     throw new Error(data.error || `API error ${resp.status}`);
   }
 

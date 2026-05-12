@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import { Tag, Spin, Badge, message } from 'antd';
 import {
-  UsergroupAddOutlined, FileTextOutlined,
+  PlusOutlined, UsergroupAddOutlined, FileTextOutlined,
   HistoryOutlined, RightOutlined, ReloadOutlined,
   TeamOutlined, EyeOutlined, LoginOutlined,
   BarChartOutlined, BellOutlined,
@@ -39,6 +39,13 @@ export default function AdminDashboard({ user, onNavigate }) {
   useEffect(() => { loadStats(); }, []);
 
   const cards = [
+    {
+      key: 'upload',
+      icon: <PlusOutlined />,
+      title: 'เพิ่มเอกสารใหม่',
+      desc: 'อัปโหลด PNG/JPG เข้าระบบ',
+      onClick: () => onNavigate('upload'),
+    },
     {
       key: 'users',
       icon: <UsergroupAddOutlined />,
