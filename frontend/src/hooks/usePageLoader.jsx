@@ -81,11 +81,19 @@ export function usePageLoader(documentId, pageNumber, totalPages) {
       // New backend returns signed URL; legacy fallback for base64.
       const url = r.url || (r.data ? `data:${r.mimeType || 'image/png'};base64,${r.data}` : null);
       if (!url) {
+        const detail = `keys=${Object.keys(r).join(',')}`;
+        console.error('[usePageLoader] no url/data in response', r);
         if (!isPrefetch) {
-          setError('Backend ไม่ส่ง URL กลับมา');
+          setError(`Backend response ไม่มี url/data (${detail})`);
           setLoading(false);
         }
         return null;
+      }
+      if (!isPrefetch) {
+        // Brief log so we can see in devtools which path the system is on.
+        console.log('[usePageLoader] page', page,
+          r.url ? 'url(signed)' : 'data(base64-fallback)',
+          r.url ? r.url.split('?')[0] : `${(r.data || '').length}B base64`);
       }
       cacheSet(doc, page, url);
       return url;

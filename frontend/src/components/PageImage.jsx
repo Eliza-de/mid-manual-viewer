@@ -6,7 +6,7 @@
  * Watermark uses absolute positioning with explicit dimensions.
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { Spin, Result, Button } from 'antd';
 import { LoadingOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -26,6 +26,10 @@ export default function PageImage({
   const auth = useAuth();
   const touchStartRef = useRef(null);
   const [scale, setScale] = useState(1);
+  const [imgErr, setImgErr] = useState(null);
+
+  // Reset image error when src changes
+  useEffect(() => { setImgErr(null); }, [src]);
 
   function onTouchStart(e) {
     if (e.touches.length === 1) {
@@ -61,15 +65,30 @@ export default function PageImage({
     touchStartRef.current = null;
   }
 
-  if (error) {
+  if (error || imgErr) {
     return (
       <div style={containerStyle}>
         <Result
           status="warning"
           title="โหลดหน้านี้ไม่สำเร็จ"
-          subTitle={error}
+          subTitle={
+            <div>
+              <div>{error || imgErr}</div>
+              {src && (
+                <div style={{
+                  fontSize: 10,
+                  marginTop: 8,
+                  wordBreak: 'break-all',
+                  color: '#94a3b8',
+                  fontFamily: 'monospace',
+                }}>
+                  {src.startsWith('data:') ? 'src: data URI (base64)' : `src: ${src}`}
+                </div>
+              )}
+            </div>
+          }
           extra={onRetry && (
-            <Button icon={<ReloadOutlined />} onClick={onRetry}>
+            <Button icon={<ReloadOutlined />} onClick={() => { setImgErr(null); onRetry(); }}>
               ลองใหม่
             </Button>
           )}
@@ -128,6 +147,10 @@ export default function PageImage({
             style={imgStyle}
             draggable={false}
             onContextMenu={(e) => e.preventDefault()}
+            onError={(e) => {
+              console.error('[PageImage] <img> failed to load', src);
+              setImgErr('Browser โหลดรูปไม่ได้ (อาจเป็น 403/404 หรือ network error)');
+            }}
           />
         </TransformComponent>
       </TransformWrapper>
