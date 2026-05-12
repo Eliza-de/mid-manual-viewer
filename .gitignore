@@ -39,3 +39,7 @@ coverage/
 # OS
 Thumbs.db
 .DS_Store
+
+# Claude Code instructions (kept locally only)
+CLAUDE.md
+.claude/
