@@ -1,7 +1,7 @@
 /**
  * EmptyState — Friendly empty state with mint sage style
  */
-import { COLORS } from '../brand.js';
+import { COLORS } from '../brandV2.js';
 
 export default function EmptyState({ icon = '📭', title = 'ไม่มีข้อมูล', subtitle = '' }) {
   return (

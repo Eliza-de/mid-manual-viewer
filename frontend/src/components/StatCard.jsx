@@ -1,7 +1,7 @@
 /**
  * StatCard — Equal-size stat tiles
  */
-import { COLORS, SHADOWS, RADIUS } from '../brand.js';
+import { COLORS, SHADOWS, RADIUS } from '../brandV2.js';
 
 export default function StatCard({ icon, label, value, subtext, color = COLORS.primaryDark }) {
   return (

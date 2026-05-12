@@ -15,8 +15,8 @@ import {
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useNavigation } from '../hooks/useNavigation.jsx';
 import { getIdToken } from '../api/liff.js';
-import { getStats } from '../api/admin.js';
-import { COLORS, SHADOWS, RADIUS } from '../brand.js';
+import { getStats } from '../api/adminV2.js';
+import { COLORS, SHADOWS, RADIUS } from '../brandV2.js';
 import PageHeader from '../components/PageHeader.jsx';
 import StatCard from '../components/StatCard.jsx';
 

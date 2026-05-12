@@ -3,7 +3,7 @@
  * Mint gradient header with back button + title + optional action
  */
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { COLORS, HEADER_GRADIENT, SHADOWS } from '../brand.js';
+import { COLORS, HEADER_GRADIENT, SHADOWS } from '../brandV2.js';
 
 export default function PageHeader({
   title,

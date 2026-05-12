@@ -25,10 +25,10 @@ import {
   listUsers, approveUser, disableUser, enableUser,
   toggleAdmin, resetUserPin,
   bulkApproveUsers, bulkDisableUsers, bulkEnableUsers,
-} from '../api/admin.js';
-import { COLORS, SHADOWS, RADIUS } from '../brand.js';
+} from '../api/adminV2.js';
+import { COLORS, SHADOWS, RADIUS } from '../brandV2.js';
 import PageHeader from '../components/PageHeader.jsx';
-import BulkActionBar from '../components/BulkActionBar.jsx';
+import BulkActionBar from '../components/BulkActionBarV2.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 
 const { Text } = Typography;

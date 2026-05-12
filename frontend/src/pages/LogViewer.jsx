@@ -14,8 +14,8 @@ import {
 } from '@ant-design/icons';
 import { useNavigation } from '../hooks/useNavigation.jsx';
 import { getIdToken } from '../api/liff.js';
-import { getAuthLogs, getAuditLogs, getAccessLogs, exportLogsCSV } from '../api/admin.js';
-import { COLORS, SHADOWS, RADIUS } from '../brand.js';
+import { getAuthLogs, getAuditLogs, getAccessLogs, exportLogsCSV } from '../api/adminV2.js';
+import { COLORS, SHADOWS, RADIUS } from '../brandV2.js';
 import PageHeader from '../components/PageHeader.jsx';
 
 const PAGE_SIZE = 50;
