@@ -30,8 +30,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'antd': ['antd', '@ant-design/icons'],
-            'antd-mobile': ['antd-mobile'],
+            'antd': ['antd'],
             'liff': ['@line/liff']
           }
         }

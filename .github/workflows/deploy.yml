@@ -38,7 +38,7 @@ jobs:
         env:
           VITE_LIFF_ID: ${{ secrets.VITE_LIFF_ID }}
           VITE_LINE_CHANNEL_ID: ${{ secrets.VITE_LINE_CHANNEL_ID }}
-          VITE_APPS_SCRIPT_URL: ${{ secrets.VITE_APPS_SCRIPT_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

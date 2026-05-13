@@ -1,5 +1,0 @@
-[33m71e3829[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m rebrand: Lean Buddy By Med-healthup with mint sage theme
-[33mf8cb49f[m phase 7: full admin panel - users / docs / logs
-[33mfa8fb94[m fix: replace api files for cloudflare workers backend
-[33m3172b02[m fix: hardcode prod env vars as fallback
-[33mdf89f3c[m add production env file
