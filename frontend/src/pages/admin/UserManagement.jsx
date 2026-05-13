@@ -12,7 +12,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
   Card, Button, List, Avatar, Tag, Tabs, Modal, message, Space,
-  Typography, Dropdown, Empty, Spin, Checkbox, Input
+  Typography, Dropdown, Empty, Spin, Checkbox, Input, Select
 } from 'antd';
 import {
   ArrowLeftOutlined, UserOutlined, CheckOutlined, StopOutlined,
@@ -32,6 +32,21 @@ import { COLORS } from '../../brand.js';
 
 const { Text } = Typography;
 
+function loginGroup(loginCode) {
+  if (!loginCode) return '?';
+  const c = String(loginCode).trim()[0]?.toUpperCase();
+  if (!c) return '?';
+  if (/[A-Z]/.test(c)) return c;
+  if (/[0-9]/.test(c)) return '#';
+  return '?';
+}
+
+function groupLabel(g) {
+  if (g === '#') return 'ตัวเลข';
+  if (g === '?') return 'ไม่มีรหัส';
+  return `กลุ่ม ${g}`;
+}
+
 export default function UserManagement() {
   // V2 marker
   if (typeof window !== 'undefined' && !window.__usermgmt_v2_loaded) {
@@ -43,6 +58,7 @@ export default function UserManagement() {
   const nav = useNavigation();
   const [tab, setTab] = useState('pending');
   const [search, setSearch] = useState('');
+  const [groupFilter, setGroupFilter] = useState('ALL');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -50,8 +66,38 @@ export default function UserManagement() {
   const [selected, setSelected] = useState(new Map());
   const selectedCount = selected.size;
 
-  const allSelected = users.length > 0 && users.every(u => selected.has(u.line_user_id));
-  const someSelected = users.some(u => selected.has(u.line_user_id));
+  const selfId = auth.session?.user?.lineUserId || auth.session?.lineUserId;
+
+  const groupOptions = useMemo(() => {
+    const counts = new Map();
+    users.forEach(u => {
+      const g = loginGroup(u.login_code);
+      counts.set(g, (counts.get(g) || 0) + 1);
+    });
+    const letters = [...counts.keys()].filter(k => /^[A-Z]$/.test(k)).sort();
+    const rest = ['#', '?'].filter(k => counts.has(k));
+    return [...letters, ...rest].map(g => ({ value: g, label: `${groupLabel(g)} (${counts.get(g)})` }));
+  }, [users]);
+
+  const visibleUsers = useMemo(() => {
+    if (groupFilter === 'ALL') return users;
+    return users.filter(u => loginGroup(u.login_code) === groupFilter);
+  }, [users, groupFilter]);
+
+  const grouped = useMemo(() => {
+    const buckets = new Map();
+    for (const u of visibleUsers) {
+      const g = loginGroup(u.login_code);
+      if (!buckets.has(g)) buckets.set(g, []);
+      buckets.get(g).push(u);
+    }
+    const letters = [...buckets.keys()].filter(k => /^[A-Z]$/.test(k)).sort();
+    const rest = ['#', '?'].filter(k => buckets.has(k));
+    return [...letters, ...rest].map(g => [g, buckets.get(g)]);
+  }, [visibleUsers]);
+
+  const allSelected = visibleUsers.length > 0 && visibleUsers.every(u => u.line_user_id === selfId || selected.has(u.line_user_id));
+  const someSelected = visibleUsers.some(u => selected.has(u.line_user_id));
 
   async function load() {
     if (!auth.session) return;
@@ -70,7 +116,7 @@ export default function UserManagement() {
   }
 
   useEffect(() => { load(); }, [tab, search]);
-  useEffect(() => { setSelected(new Map()); }, [tab, search]);
+  useEffect(() => { setSelected(new Map()); }, [tab, search, groupFilter]);
 
   function toggleSelect(user) {
     const m = new Map(selected);
@@ -84,8 +130,7 @@ export default function UserManagement() {
       setSelected(new Map());
     } else {
       const m = new Map();
-      const selfId = auth.session?.user?.lineUserId || auth.session?.lineUserId;
-      users.forEach(u => {
+      visibleUsers.forEach(u => {
         if (u.line_user_id !== selfId) m.set(u.line_user_id, u);
       });
       setSelected(m);
@@ -265,7 +310,70 @@ export default function UserManagement() {
     return items;
   }
 
-  const selfId = auth.session?.user?.lineUserId || auth.session?.lineUserId;
+  function renderUserCard(user) {
+    const isSelf = user.line_user_id === selfId;
+    const isChecked = selected.has(user.line_user_id);
+    return (
+      <Card
+        key={user.line_user_id}
+        size="small"
+        style={{
+          marginBottom: 8,
+          borderColor: isChecked ? COLORS.primary : 'rgba(31,77,63,0.08)',
+          background: isChecked ? COLORS.bgSoft : '#fff',
+          borderRadius: 12,
+          borderWidth: '0.5px'
+        }}
+        styles={{ body: { padding: 12 } }}
+      >
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <Checkbox
+            checked={isChecked}
+            disabled={isSelf}
+            onChange={() => toggleSelect(user)}
+          />
+          {user.picture_url
+            ? <Avatar src={user.picture_url} size={40} />
+            : <Avatar icon={<UserOutlined />} size={40} />
+          }
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <Text strong style={{ fontSize: 14 }}>{user.display_name}</Text>
+              {user.is_admin && <Tag color="gold" style={{ marginInlineEnd: 0 }}>Admin</Tag>}
+              {isSelf && <Tag color="blue" style={{ marginInlineEnd: 0 }}>คุณ</Tag>}
+            </div>
+            <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+              {user.nickname || user.full_name || user.department}
+              {user.employee_code && ` · ${user.employee_code}`}
+              {user.login_code && ` · 🔑 ${user.login_code}`}
+            </Text>
+            {user.last_login_at && tab === 'active' && (
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                last login: {new Date(user.last_login_at).toLocaleString('th-TH')}
+              </Text>
+            )}
+            {user.created_at && tab === 'pending' && (
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                ลงทะเบียน: {new Date(user.created_at).toLocaleString('th-TH')}
+              </Text>
+            )}
+          </div>
+          <Space>
+            {user.status === 'pending' && (
+              <Button type="primary" size="small" icon={<CheckOutlined />}
+                onClick={() => handleApprove(user)}
+                style={{ background: COLORS.primary, borderColor: COLORS.primary }}>
+                อนุมัติ
+              </Button>
+            )}
+            <Dropdown menu={{ items: buildActionMenu(user) }} placement="bottomRight" trigger={['click']}>
+              <Button type="text" icon={<MoreOutlined />} />
+            </Dropdown>
+          </Space>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <div style={pageStyle}>
@@ -294,7 +402,6 @@ export default function UserManagement() {
 
       <div style={{ ...contentStyle, paddingBottom: selectedCount > 0 ? 80 : 12 }}>
         <div style={{ maxWidth: 480, margin: '0 auto' }}>
-          {/* Full-width search (no department filter) */}
           <Input
             placeholder="ค้นหาชื่อ / รหัสพนักงาน..."
             prefix={<SearchOutlined style={{ color: '#94A3B8' }} />}
@@ -303,13 +410,23 @@ export default function UserManagement() {
             allowClear
             style={searchInputStyle}
           />
+          <Select
+            value={groupFilter}
+            onChange={setGroupFilter}
+            style={{ width: '100%', marginBottom: 10 }}
+            options={[
+              { value: 'ALL', label: `กลุ่ม: ทั้งหมด (${users.length})` },
+              ...groupOptions,
+            ]}
+          />
 
           {loading && users.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
-          ) : users.length === 0 ? (
+          ) : visibleUsers.length === 0 ? (
             <Empty
               description={
                 search ? 'ไม่พบผู้ใช้ที่ตรงกับเงื่อนไข' :
+                groupFilter !== 'ALL' ? `ไม่มีผู้ใช้ใน${groupLabel(groupFilter)}` :
                 tab === 'pending' ? 'ไม่มีผู้ใช้รออนุมัติ' :
                 tab === 'active' ? 'ไม่มีผู้ใช้ที่ active' :
                 'ไม่มีผู้ใช้ที่ถูกระงับ'
@@ -321,76 +438,22 @@ export default function UserManagement() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', marginBottom: 6 }}>
                 <Checkbox checked={allSelected} indeterminate={someSelected && !allSelected} onChange={toggleSelectAll}>
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    เลือกทั้งหมด ({users.length})
+                    เลือกทั้งหมด ({visibleUsers.length}{groupFilter !== 'ALL' ? ` ใน${groupLabel(groupFilter)}` : ''})
                   </Text>
                 </Checkbox>
               </div>
 
-              <List
-                dataSource={users}
-                renderItem={user => {
-                  const isSelf = user.line_user_id === selfId;
-                  const isChecked = selected.has(user.line_user_id);
-                  return (
-                    <Card
-                      size="small"
-                      style={{
-                        marginBottom: 8,
-                        borderColor: isChecked ? COLORS.primary : 'rgba(31,77,63,0.08)',
-                        background: isChecked ? COLORS.bgSoft : '#fff',
-                        borderRadius: 12,
-                        borderWidth: '0.5px'
-                      }}
-                      styles={{ body: { padding: 12 } }}
-                    >
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                        <Checkbox
-                          checked={isChecked}
-                          disabled={isSelf}
-                          onChange={() => toggleSelect(user)}
-                        />
-                        {user.picture_url
-                          ? <Avatar src={user.picture_url} size={40} />
-                          : <Avatar icon={<UserOutlined />} size={40} />
-                        }
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                            <Text strong style={{ fontSize: 14 }}>{user.display_name}</Text>
-                            {user.is_admin && <Tag color="gold" style={{ marginInlineEnd: 0 }}>Admin</Tag>}
-                            {isSelf && <Tag color="blue" style={{ marginInlineEnd: 0 }}>คุณ</Tag>}
-                          </div>
-                          <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-                            {user.nickname || user.full_name || user.department}
-                            {user.employee_code && ` · ${user.employee_code}`}
-                          </Text>
-                          {user.last_login_at && tab === 'active' && (
-                            <Text type="secondary" style={{ fontSize: 11 }}>
-                              last login: {new Date(user.last_login_at).toLocaleString('th-TH')}
-                            </Text>
-                          )}
-                          {user.created_at && tab === 'pending' && (
-                            <Text type="secondary" style={{ fontSize: 11 }}>
-                              ลงทะเบียน: {new Date(user.created_at).toLocaleString('th-TH')}
-                            </Text>
-                          )}
-                        </div>
-                        <Space>
-                          {user.status === 'pending' && (
-                            <Button type="primary" size="small" icon={<CheckOutlined />}
-                              onClick={() => handleApprove(user)}
-                              style={{ background: COLORS.primary, borderColor: COLORS.primary }}>
-                              อนุมัติ
-                            </Button>
-                          )}
-                          <Dropdown menu={{ items: buildActionMenu(user) }} placement="bottomRight" trigger={['click']}>
-                            <Button type="text" icon={<MoreOutlined />} />
-                          </Dropdown>
-                        </Space>
+              {groupFilter === 'ALL'
+                ? grouped.map(([g, list]) => (
+                    <div key={g} style={{ marginBottom: 12 }}>
+                      <div style={sectionHeaderStyle}>
+                        {groupLabel(g)} <span style={sectionCountStyle}>({list.length})</span>
                       </div>
-                    </Card>
-                  );
-                }}
-              />
+                      {list.map(renderUserCard)}
+                    </div>
+                  ))
+                : visibleUsers.map(renderUserCard)
+              }
             </>
           )}
         </div>
@@ -457,4 +520,21 @@ const searchInputStyle = {
   marginBottom: 10,
   height: 40,
   border: '0.5px solid rgba(31,77,63,0.12)'
+};
+
+const sectionHeaderStyle = {
+  fontSize: 13,
+  fontWeight: 700,
+  color: COLORS.primary,
+  background: COLORS.bgSoft,
+  padding: '6px 12px',
+  borderRadius: 8,
+  marginBottom: 8,
+  display: 'inline-block',
+};
+
+const sectionCountStyle = {
+  color: '#6B8278',
+  fontWeight: 500,
+  marginLeft: 4,
 };
