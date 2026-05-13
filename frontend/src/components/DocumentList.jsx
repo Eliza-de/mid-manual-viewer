@@ -49,8 +49,8 @@ export default function DocumentList({ docs, loading, error, onRefetch, onSelect
 
   return (
     <div>
-      {docs.map(doc => (
-        <DocumentCard key={doc.id} doc={doc} onClick={onSelect} />
+      {docs.map((doc, index) => (
+        <DocumentCard key={doc.id} doc={doc} index={index} onClick={onSelect} />
       ))}
     </div>
   );

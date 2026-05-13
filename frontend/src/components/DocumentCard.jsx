@@ -1,53 +1,51 @@
 /**
- * DocumentCard — VERSION 2 REDESIGN (Lean Buddy mint sage)
- * BUILD: 2026-05-07-V2-CARD
+ * DocumentCard — Chapter-N pill + page-1 image thumbnail
+ * BUILD: 2026-05-13-CHAPTER-THUMB
  *
- * Changes from V1:
- *   - Colored thumbnail (left) with page count badge
- *   - Color-coded tags by form_code prefix
- *   - Better visual hierarchy
- *   - Modern card style
+ * - Tag is now "Chapter-{index+1}" in a single dark pill, regardless of form_code
+ * - Thumbnail is the document's page 1 image (lazy-loaded on viewport entry)
+ * - Mint gradient + FileTextOutlined remain as loading/error fallback
  */
 
+import { useEffect, useRef, useState } from 'react';
 import { FileTextOutlined, ClockCircleOutlined, RightOutlined } from '@ant-design/icons';
 import { relativeTime } from '../utils/format.js';
 import { COLORS } from '../brand.js';
+import { useThumbnail } from '../hooks/useThumbnail.jsx';
 
-// Color mapping by form_code prefix
-function getTagColor(formCode) {
-  if (!formCode) return { bg: '#6B8278', text: 'white' };
-  const code = formCode.toUpperCase();
+const THUMB_GRADIENT = `linear-gradient(135deg, #A4DFCB, #5DBFA0)`;
 
-  // FF = Form Full / dark mint
-  if (code.startsWith('FF')) return { bg: COLORS.primary, text: 'white' };
-  // KEY = Key insight / orange
-  if (code.startsWith('KEY')) return { bg: '#E8965B', text: 'white' };
-  // BOOK = Book / mint mid
-  if (code.startsWith('BOOK')) return { bg: '#5DBFA0', text: 'white' };
-  // SUMMARY/SUM = Summary / soft mint
-  if (code.startsWith('SUM')) return { bg: '#A4DFCB', text: COLORS.primary };
-  // Default
-  return { bg: '#6B8278', text: 'white' };
-}
+export default function DocumentCard({ doc, index = 0, onClick }) {
+  const cardRef = useRef(null);
+  const [visible, setVisible] = useState(false);
+  const { url: thumbUrl } = useThumbnail(doc?.id, visible);
 
-// Thumbnail gradient by tag
-function getThumbGradient(formCode) {
-  if (!formCode) return `linear-gradient(135deg, #A4DFCB, #5DBFA0)`;
-  const code = formCode.toUpperCase();
+  useEffect(() => {
+    if (visible) return;
+    const el = cardRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setVisible(true);
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          io.disconnect();
+          break;
+        }
+      }
+    }, { rootMargin: '200px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [visible]);
 
-  if (code.startsWith('FF')) return `linear-gradient(135deg, #5DBFA0, ${COLORS.primary})`;
-  if (code.startsWith('KEY')) return `linear-gradient(135deg, #F5C8A0, #E8965B)`;
-  if (code.startsWith('BOOK')) return `linear-gradient(135deg, #A4DFCB, #5DBFA0)`;
-  if (code.startsWith('SUM')) return `linear-gradient(135deg, #DCEEE3, #A4DFCB)`;
-  return `linear-gradient(135deg, #A4DFCB, #5DBFA0)`;
-}
-
-export default function DocumentCard({ doc, onClick }) {
-  const tagColor = getTagColor(doc.form_code);
-  const thumbBg = getThumbGradient(doc.form_code);
+  const chapterLabel = `Chapter-${index + 1}`;
 
   return (
     <div
+      ref={cardRef}
       onClick={() => onClick(doc)}
       style={cardStyle}
       onMouseEnter={(e) => {
@@ -60,8 +58,18 @@ export default function DocumentCard({ doc, onClick }) {
       }}
     >
       {/* Thumbnail */}
-      <div style={{ ...thumbStyle, background: thumbBg }}>
-        <FileTextOutlined style={{ color: 'white', fontSize: 24 }} />
+      <div style={thumbStyle}>
+        {thumbUrl ? (
+          <img
+            src={thumbUrl}
+            alt=""
+            style={thumbImgStyle}
+            draggable={false}
+            onContextMenu={(e) => e.preventDefault()}
+          />
+        ) : (
+          <FileTextOutlined style={{ color: 'white', fontSize: 24 }} />
+        )}
         {typeof doc.page_count === 'number' && (
           <div style={pageCountBadgeStyle}>
             {doc.page_count}p
@@ -71,32 +79,20 @@ export default function DocumentCard({ doc, onClick }) {
 
       {/* Info */}
       <div style={infoStyle}>
-        {/* Tag */}
-        {doc.form_code && (
-          <div style={{ marginBottom: 6 }}>
-            <span style={{
-              ...tagStyle,
-              background: tagColor.bg,
-              color: tagColor.text
-            }}>
-              {doc.form_code}
-            </span>
-          </div>
-        )}
+        <div style={{ marginBottom: 6 }}>
+          <span style={tagStyle}>{chapterLabel}</span>
+        </div>
 
-        {/* Title */}
         <div style={titleStyle}>
           {doc.title}
         </div>
 
-        {/* Description */}
         {doc.description && (
           <div style={descStyle}>
             {doc.description}
           </div>
         )}
 
-        {/* Meta */}
         <div style={metaStyle}>
           {doc.updated_at && (
             <span style={metaItemStyle}>
@@ -107,7 +103,6 @@ export default function DocumentCard({ doc, onClick }) {
         </div>
       </div>
 
-      {/* Chevron */}
       <RightOutlined style={chevronStyle} />
     </div>
   );
@@ -138,7 +133,19 @@ const thumbStyle = {
   justifyContent: 'center',
   flexShrink: 0,
   position: 'relative',
+  overflow: 'hidden',
+  background: THUMB_GRADIENT,
   boxShadow: '0 2px 4px rgba(31,77,63,0.08)'
+};
+
+const thumbImgStyle = {
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+  display: 'block',
+  userSelect: 'none',
+  WebkitUserDrag: 'none',
+  pointerEvents: 'none'
 };
 
 const pageCountBadgeStyle = {
@@ -151,7 +158,8 @@ const pageCountBadgeStyle = {
   fontWeight: 700,
   padding: '1px 6px',
   borderRadius: 999,
-  letterSpacing: 0.3
+  letterSpacing: 0.3,
+  zIndex: 1
 };
 
 const infoStyle = {
@@ -165,7 +173,9 @@ const tagStyle = {
   letterSpacing: 0.4,
   padding: '2px 8px',
   borderRadius: 999,
-  display: 'inline-block'
+  display: 'inline-block',
+  background: '#3A4A44',
+  color: 'white'
 };
 
 const titleStyle = {
