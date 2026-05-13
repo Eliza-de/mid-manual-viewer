@@ -17,15 +17,15 @@ import {
 import {
   ArrowLeftOutlined, UserOutlined, CheckOutlined, StopOutlined,
   ReloadOutlined, MoreOutlined, KeyOutlined, CrownOutlined, PlayCircleOutlined,
-  SearchOutlined
+  SearchOutlined, DeleteOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useNavigation } from '../../hooks/useNavigation.jsx';
 import { getIdToken } from '../../api/liff.js';
 import {
   listUsers, approveUser, disableUser, enableUser,
-  toggleAdmin, resetUserPin,
-  bulkApproveUsers, bulkDisableUsers, bulkEnableUsers
+  toggleAdmin, resetUserPin, deleteUser,
+  bulkApproveUsers, bulkDisableUsers, bulkEnableUsers, bulkDeleteUsers
 } from '../../api/admin.js';
 import BulkActionBar from '../../components/BulkActionBar.jsx';
 import { COLORS } from '../../brand.js';
@@ -154,6 +154,26 @@ export default function UserManagement() {
     });
   }
 
+  async function handleDelete(user) {
+    Modal.confirm({
+      title: 'ลบผู้ใช้ถาวร',
+      content: (
+        <div>
+          <div>ลบ <b>{user.display_name}</b>{user.nickname ? ` (${user.nickname})` : ''} ถาวร?</div>
+          <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>
+            การกระทำนี้ไม่สามารถย้อนกลับได้ — user คนนี้ต้องลงทะเบียนใหม่หากกลับมาใช้งาน
+          </div>
+        </div>
+      ),
+      okText: 'ลบถาวร', okButtonProps: { danger: true }, cancelText: 'ยกเลิก',
+      async onOk() {
+        const r = await deleteUser(getIdToken(), auth.session.token, user.line_user_id);
+        if (r.ok) { message.success('ลบสำเร็จ'); load(); }
+        else message.error(r.error || 'ไม่สำเร็จ');
+      }
+    });
+  }
+
   // ============ BULK ACTIONS ============
 
   async function runBulk(action, label, danger = false) {
@@ -187,6 +207,14 @@ export default function UserManagement() {
   }
 
   const bulkActions = useMemo(() => {
+    const deleteAction = {
+      key: 'bulkDelete',
+      icon: <DeleteOutlined />,
+      label: 'ลบถาวรทั้งหมด',
+      danger: true,
+      onClick: () => runBulk(bulkDeleteUsers, 'ลบถาวร', true),
+      loading: bulkLoading
+    };
     if (tab === 'pending') {
       return [{
         key: 'bulkApprove',
@@ -194,7 +222,7 @@ export default function UserManagement() {
         label: 'อนุมัติทั้งหมด',
         onClick: () => runBulk(bulkApproveUsers, 'อนุมัติ'),
         loading: bulkLoading
-      }];
+      }, deleteAction];
     }
     if (tab === 'active') {
       return [{
@@ -204,7 +232,7 @@ export default function UserManagement() {
         danger: true,
         onClick: () => runBulk(bulkDisableUsers, 'ระงับ', true),
         loading: bulkLoading
-      }];
+      }, deleteAction];
     }
     if (tab === 'disabled') {
       return [{
@@ -213,7 +241,7 @@ export default function UserManagement() {
         label: 'เปิดใช้งานทั้งหมด',
         onClick: () => runBulk(bulkEnableUsers, 'เปิดใช้งาน'),
         loading: bulkLoading
-      }];
+      }, deleteAction];
     }
     return [];
   }, [tab, bulkLoading]);
@@ -232,6 +260,8 @@ export default function UserManagement() {
     if (user.status === 'disabled') {
       items.push({ key: 'enable', icon: <PlayCircleOutlined style={{ color: '#5DBFA0' }} />, label: 'เปิดใช้งานอีกครั้ง', onClick: () => handleEnable(user) });
     }
+    items.push({ type: 'divider' });
+    items.push({ key: 'delete', icon: <DeleteOutlined />, label: 'ลบผู้ใช้ถาวร', danger: true, onClick: () => handleDelete(user) });
     return items;
   }
 

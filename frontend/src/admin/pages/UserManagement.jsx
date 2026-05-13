@@ -13,12 +13,12 @@ import {
 import {
   UserOutlined, CheckOutlined, StopOutlined, ReloadOutlined,
   MoreOutlined, KeyOutlined, CrownOutlined, PlayCircleOutlined,
-  SearchOutlined,
+  SearchOutlined, DeleteOutlined,
 } from '@ant-design/icons';
 import {
   listUsers, approveUser, disableUser, enableUser,
-  toggleAdmin, resetUserPin,
-  bulkApproveUsers, bulkDisableUsers, bulkEnableUsers,
+  toggleAdmin, resetUserPin, deleteUser,
+  bulkApproveUsers, bulkDisableUsers, bulkEnableUsers, bulkDeleteUsers,
 } from '../api/admin';
 
 const { Text } = Typography;
@@ -145,6 +145,28 @@ export default function UserManagement({ user: currentUser }) {
     });
   }
 
+  async function handleDelete(u) {
+    Modal.confirm({
+      title: 'ลบผู้ใช้ถาวร',
+      content: (
+        <div>
+          <div>ลบ <b>{u.display_name}</b>{u.nickname ? ` (${u.nickname})` : ''} ถาวร?</div>
+          <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>
+            การกระทำนี้ไม่สามารถย้อนกลับได้ — user คนนี้ต้องลงทะเบียนใหม่หากกลับมาใช้งาน
+          </div>
+        </div>
+      ),
+      okText: 'ลบถาวร', okButtonProps: { danger: true }, cancelText: 'ยกเลิก',
+      async onOk() {
+        try {
+          await deleteUser(u.line_user_id);
+          message.success('ลบสำเร็จ');
+          load();
+        } catch (err) { message.error(err.message || 'ไม่สำเร็จ'); }
+      },
+    });
+  }
+
   async function runBulk(action, label, danger = false) {
     const ids = Array.from(selected.keys());
     if (ids.length === 0) return;
@@ -171,9 +193,10 @@ export default function UserManagement({ user: currentUser }) {
   }
 
   const bulkActions = useMemo(() => {
-    if (tab === 'pending') return [{ key: 'a', icon: <CheckOutlined />, label: 'อนุมัติทั้งหมด', onClick: () => runBulk(bulkApproveUsers, 'อนุมัติ'), loading: bulkLoading }];
-    if (tab === 'active')  return [{ key: 'b', icon: <StopOutlined />, label: 'ระงับทั้งหมด', danger: true, onClick: () => runBulk(bulkDisableUsers, 'ระงับ', true), loading: bulkLoading }];
-    if (tab === 'disabled') return [{ key: 'c', icon: <PlayCircleOutlined />, label: 'เปิดใช้งานทั้งหมด', onClick: () => runBulk(bulkEnableUsers, 'เปิดใช้งาน'), loading: bulkLoading }];
+    const del = { key: 'd', icon: <DeleteOutlined />, label: 'ลบถาวรทั้งหมด', danger: true, onClick: () => runBulk(bulkDeleteUsers, 'ลบถาวร', true), loading: bulkLoading };
+    if (tab === 'pending') return [{ key: 'a', icon: <CheckOutlined />, label: 'อนุมัติทั้งหมด', onClick: () => runBulk(bulkApproveUsers, 'อนุมัติ'), loading: bulkLoading }, del];
+    if (tab === 'active')  return [{ key: 'b', icon: <StopOutlined />, label: 'ระงับทั้งหมด', danger: true, onClick: () => runBulk(bulkDisableUsers, 'ระงับ', true), loading: bulkLoading }, del];
+    if (tab === 'disabled') return [{ key: 'c', icon: <PlayCircleOutlined />, label: 'เปิดใช้งานทั้งหมด', onClick: () => runBulk(bulkEnableUsers, 'เปิดใช้งาน'), loading: bulkLoading }, del];
     return [];
   }, [tab, bulkLoading, selectedCount]);
 
@@ -191,6 +214,8 @@ export default function UserManagement({ user: currentUser }) {
     if (u.status === 'disabled') {
       items.push({ key: 'enable', icon: <PlayCircleOutlined style={{ color: MINT_MID }} />, label: 'เปิดใช้งานอีกครั้ง', onClick: () => handleEnable(u) });
     }
+    items.push({ type: 'divider' });
+    items.push({ key: 'delete', icon: <DeleteOutlined />, label: 'ลบผู้ใช้ถาวร', danger: true, onClick: () => handleDelete(u) });
     return items;
   }
 

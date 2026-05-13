@@ -48,6 +48,9 @@ export async function toggleAdmin(idToken, sessionToken, lineUserId) {
 export async function resetUserPin(idToken, sessionToken, lineUserId) {
   return post('/api/admin/users/resetPin', { idToken, sessionToken, payload: { line_user_id: lineUserId } });
 }
+export async function deleteUser(idToken, sessionToken, lineUserId) {
+  return post('/api/admin/users/delete', { idToken, sessionToken, payload: { line_user_id: lineUserId } });
+}
 
 // ===== Phase 9: Bulk Users =====
 export async function bulkApproveUsers(idToken, sessionToken, lineUserIds) {
@@ -58,6 +61,9 @@ export async function bulkDisableUsers(idToken, sessionToken, lineUserIds, reaso
 }
 export async function bulkEnableUsers(idToken, sessionToken, lineUserIds) {
   return post('/api/admin/users/bulkEnable', { idToken, sessionToken, payload: { line_user_ids: lineUserIds } });
+}
+export async function bulkDeleteUsers(idToken, sessionToken, lineUserIds) {
+  return post('/api/admin/users/bulkDelete', { idToken, sessionToken, payload: { line_user_ids: lineUserIds } });
 }
 
 // ===== Documents =====
