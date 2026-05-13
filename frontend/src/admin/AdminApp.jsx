@@ -9,8 +9,9 @@
  */
 
 import { useState, useEffect } from 'react';
+import { message } from 'antd';
 import { loadAdminSession, clearAdminSession, getSessionTimeRemaining } from './lib/adminSession';
-import { adminMe, adminLogout } from './api/admin';
+import { adminMe, adminLogout, updateUser } from './api/admin';
 import QrLogin from './pages/QrLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import UserManagement from './pages/UserManagement';
@@ -18,6 +19,7 @@ import DocumentManagement from './pages/DocumentManagement';
 import DocumentUpload from './pages/DocumentUpload';
 import LogViewer from './pages/LogViewer';
 import NotificationSettings from './pages/NotificationSettings';
+import EditProfileModal from '../components/EditProfileModal.jsx';
 
 // ===== Theme =====
 const MINT_DARK = '#1F4D3F';
@@ -40,6 +42,7 @@ export default function AdminApp() {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Initial session check
   useEffect(() => {
@@ -103,6 +106,30 @@ export default function AdminApp() {
     setSession(null);
   };
 
+  const handleSaveProfile = async (fields) => {
+    const lineUserId = session?.user?.lineUserId || session?.user?.line_user_id;
+    if (!lineUserId) throw new Error('Missing line_user_id');
+    try {
+      await updateUser(lineUserId, fields);
+      message.success('บันทึกข้อมูลสำเร็จ');
+      setSession({
+        ...session,
+        user: {
+          ...session.user,
+          fullName: fields.full_name,
+          full_name: fields.full_name,
+          nickname: fields.nickname,
+          loginCode: fields.login_code,
+          login_code: fields.login_code,
+        },
+      });
+      setProfileOpen(false);
+    } catch (err) {
+      message.error(err.message || 'ไม่สำเร็จ');
+      throw err;
+    }
+  };
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -142,6 +169,18 @@ export default function AdminApp() {
             </div>
           </div>
           <button
+            onClick={() => setProfileOpen(true)}
+            style={{
+              background: 'rgba(255,255,255,0.18)',
+              border: 'none', color: '#fff',
+              padding: '8px 14px', borderRadius: 8,
+              fontSize: 12, fontWeight: 500, cursor: 'pointer',
+            }}
+            title="แก้ไขโปรไฟล์ของฉัน"
+          >
+            👤 โปรไฟล์
+          </button>
+          <button
             onClick={handleLogout}
             style={{
               background: 'rgba(255,255,255,0.18)',
@@ -155,6 +194,13 @@ export default function AdminApp() {
           </button>
         </div>
       </div>
+
+      <EditProfileModal
+        open={profileOpen}
+        user={session.user}
+        onCancel={() => setProfileOpen(false)}
+        onSave={handleSaveProfile}
+      />
 
       {/* Tab nav */}
       <div style={{

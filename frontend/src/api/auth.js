@@ -22,6 +22,13 @@ export async function register(idToken, { full_name, nickname, login_code }) {
   });
 }
 
+export async function updateProfile(idToken, { full_name, nickname, login_code }) {
+  return post('/api/auth/updateProfile', {
+    idToken,
+    payload: { full_name, nickname, login_code }
+  });
+}
+
 export async function setPin(idToken, pin) {
   return post('/api/auth/setPin', {
     idToken,

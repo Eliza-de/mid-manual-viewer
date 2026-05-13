@@ -51,6 +51,9 @@ export async function resetUserPin(idToken, sessionToken, lineUserId) {
 export async function deleteUser(idToken, sessionToken, lineUserId) {
   return post('/api/admin/users/delete', { idToken, sessionToken, payload: { line_user_id: lineUserId } });
 }
+export async function updateUser(idToken, sessionToken, lineUserId, fields) {
+  return post('/api/admin/users/update', { idToken, sessionToken, payload: { line_user_id: lineUserId, fields } });
+}
 
 // ===== Phase 9: Bulk Users =====
 export async function bulkApproveUsers(idToken, sessionToken, lineUserIds) {

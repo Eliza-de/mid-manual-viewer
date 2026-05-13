@@ -8,15 +8,19 @@
  *   - Cleaner spacing
  */
 
-import { Layout, Avatar, Dropdown, Tag, Badge } from 'antd';
+import { useState } from 'react';
+import { Layout, Avatar, Dropdown, Tag, Badge, message } from 'antd';
 import {
-  UserOutlined, LogoutOutlined,
+  UserOutlined, LogoutOutlined, EditOutlined,
   BookOutlined, FileTextOutlined, UnorderedListOutlined,
   SafetyCertificateOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useNavigation } from '../hooks/useNavigation.jsx';
+import { getIdToken } from '../api/liff.js';
+import { updateProfile } from '../api/auth.js';
 import { BRAND, COLORS } from '../brand.js';
+import EditProfileModal from './EditProfileModal.jsx';
 
 const { Header, Content } = Layout;
 
@@ -29,6 +33,19 @@ export default function AppLayout({ category, onCategoryChange, children }) {
 
   const auth = useAuth();
   const nav = useNavigation();
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  async function handleSaveProfile(fields) {
+    const r = await updateProfile(getIdToken(), fields);
+    if (r.ok) {
+      message.success('บันทึกข้อมูลสำเร็จ');
+      setProfileOpen(false);
+      if (auth.refresh) await auth.refresh();
+    } else {
+      message.error(r.error || 'ไม่สำเร็จ');
+      throw new Error(r.error || 'ไม่สำเร็จ');
+    }
+  }
 
   const userMenuItems = [
     {
@@ -45,6 +62,13 @@ export default function AppLayout({ category, onCategoryChange, children }) {
         </div>
       ),
       disabled: true
+    },
+    { type: 'divider' },
+    {
+      key: 'editProfile',
+      icon: <EditOutlined />,
+      label: 'แก้ไขโปรไฟล์',
+      onClick: () => setProfileOpen(true)
     },
     { type: 'divider' },
     ...(auth.user?.isAdmin ? [{
@@ -128,6 +152,13 @@ export default function AppLayout({ category, onCategoryChange, children }) {
           {children}
         </div>
       </Content>
+
+      <EditProfileModal
+        open={profileOpen}
+        user={auth.user}
+        onCancel={() => setProfileOpen(false)}
+        onSave={handleSaveProfile}
+      />
     </Layout>
   );
 }

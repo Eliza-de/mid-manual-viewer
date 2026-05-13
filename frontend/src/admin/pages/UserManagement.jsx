@@ -13,13 +13,14 @@ import {
 import {
   UserOutlined, CheckOutlined, StopOutlined, ReloadOutlined,
   MoreOutlined, KeyOutlined, CrownOutlined, PlayCircleOutlined,
-  SearchOutlined, DeleteOutlined,
+  SearchOutlined, DeleteOutlined, EditOutlined,
 } from '@ant-design/icons';
 import {
   listUsers, approveUser, disableUser, enableUser,
-  toggleAdmin, resetUserPin, deleteUser,
+  toggleAdmin, resetUserPin, deleteUser, updateUser,
   bulkApproveUsers, bulkDisableUsers, bulkEnableUsers, bulkDeleteUsers,
 } from '../api/admin';
+import EditUserModal from '../../components/EditUserModal.jsx';
 
 const { Text } = Typography;
 
@@ -53,6 +54,7 @@ export default function UserManagement({ user: currentUser }) {
 
   const [selected, setSelected] = useState(new Map());
   const selectedCount = selected.size;
+  const [editingUser, setEditingUser] = useState(null);
 
   const selfId = currentUser?.lineUserId || currentUser?.line_user_id;
 
@@ -192,6 +194,18 @@ export default function UserManagement({ user: currentUser }) {
     });
   }
 
+  async function handleEditSave(fields) {
+    try {
+      await updateUser(editingUser.line_user_id, fields);
+      message.success('บันทึกข้อมูลสำเร็จ');
+      setEditingUser(null);
+      load();
+    } catch (err) {
+      message.error(err.message || 'ไม่สำเร็จ');
+      throw err;
+    }
+  }
+
   async function handleDelete(u) {
     Modal.confirm({
       title: 'ลบผู้ใช้ถาวร',
@@ -249,6 +263,8 @@ export default function UserManagement({ user: currentUser }) {
 
   function buildActionMenu(u) {
     const items = [];
+    items.push({ key: 'edit', icon: <EditOutlined />, label: 'แก้ไขข้อมูล', onClick: () => setEditingUser(u) });
+    items.push({ type: 'divider' });
     if (u.status === 'pending') {
       items.push({ key: 'approve', icon: <CheckOutlined style={{ color: MINT_MID }} />, label: 'อนุมัติ', onClick: () => handleApprove(u) });
     }
@@ -406,6 +422,13 @@ export default function UserManagement({ user: currentUser }) {
           </>
         )}
       </div>
+
+      <EditUserModal
+        open={!!editingUser}
+        user={editingUser}
+        onCancel={() => setEditingUser(null)}
+        onSave={handleEditSave}
+      />
 
       {/* Bulk action bar */}
       {selectedCount > 0 && (

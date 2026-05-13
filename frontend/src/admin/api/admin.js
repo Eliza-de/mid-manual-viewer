@@ -178,6 +178,7 @@ export const enableUser         = (line_user_id) => adminCall('/api/admin/users/
 export const toggleAdmin        = (line_user_id) => adminCall('/api/admin/users/toggleAdmin', { line_user_id });
 export const resetUserPin       = (line_user_id) => adminCall('/api/admin/users/resetPin', { line_user_id });
 export const deleteUser         = (line_user_id) => adminCall('/api/admin/users/delete', { line_user_id });
+export const updateUser         = (line_user_id, fields) => adminCall('/api/admin/users/update', { line_user_id, fields });
 export const bulkApproveUsers   = (line_user_ids) => adminCall('/api/admin/users/bulkApprove', { line_user_ids });
 export const bulkDisableUsers   = (line_user_ids, reason = '') => adminCall('/api/admin/users/bulkDisable', { line_user_ids, reason });
 export const bulkEnableUsers    = (line_user_ids) => adminCall('/api/admin/users/bulkEnable', { line_user_ids });

@@ -17,16 +17,17 @@ import {
 import {
   ArrowLeftOutlined, UserOutlined, CheckOutlined, StopOutlined,
   ReloadOutlined, MoreOutlined, KeyOutlined, CrownOutlined, PlayCircleOutlined,
-  SearchOutlined, DeleteOutlined
+  SearchOutlined, DeleteOutlined, EditOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useNavigation } from '../../hooks/useNavigation.jsx';
 import { getIdToken } from '../../api/liff.js';
 import {
   listUsers, approveUser, disableUser, enableUser,
-  toggleAdmin, resetUserPin, deleteUser,
+  toggleAdmin, resetUserPin, deleteUser, updateUser,
   bulkApproveUsers, bulkDisableUsers, bulkEnableUsers, bulkDeleteUsers
 } from '../../api/admin.js';
+import EditUserModal from '../../components/EditUserModal.jsx';
 import BulkActionBar from '../../components/BulkActionBar.jsx';
 import { COLORS } from '../../brand.js';
 
@@ -65,6 +66,7 @@ export default function UserManagement() {
 
   const [selected, setSelected] = useState(new Map());
   const selectedCount = selected.size;
+  const [editingUser, setEditingUser] = useState(null);
 
   const selfId = auth.session?.user?.lineUserId || auth.session?.lineUserId;
 
@@ -199,6 +201,18 @@ export default function UserManagement() {
     });
   }
 
+  async function handleEditSave(fields) {
+    const r = await updateUser(getIdToken(), auth.session.token, editingUser.line_user_id, fields);
+    if (r.ok) {
+      message.success('บันทึกข้อมูลสำเร็จ');
+      setEditingUser(null);
+      load();
+    } else {
+      message.error(r.error || 'ไม่สำเร็จ');
+      throw new Error(r.error || 'ไม่สำเร็จ');
+    }
+  }
+
   async function handleDelete(user) {
     Modal.confirm({
       title: 'ลบผู้ใช้ถาวร',
@@ -293,6 +307,8 @@ export default function UserManagement() {
 
   function buildActionMenu(user) {
     const items = [];
+    items.push({ key: 'edit', icon: <EditOutlined />, label: 'แก้ไขข้อมูล', onClick: () => setEditingUser(user) });
+    items.push({ type: 'divider' });
     if (user.status === 'pending') {
       items.push({ key: 'approve', icon: <CheckOutlined style={{ color: '#5DBFA0' }} />, label: 'อนุมัติ', onClick: () => handleApprove(user) });
     }
@@ -458,6 +474,13 @@ export default function UserManagement() {
           )}
         </div>
       </div>
+
+      <EditUserModal
+        open={!!editingUser}
+        user={editingUser}
+        onCancel={() => setEditingUser(null)}
+        onSave={handleEditSave}
+      />
 
       <BulkActionBar
         selectedCount={selectedCount}
