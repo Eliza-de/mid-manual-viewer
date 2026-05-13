@@ -98,7 +98,11 @@ export default function AppLayout({ category, onCategoryChange, children }) {
       <Header style={headerStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={logoStyle}>
-            <BookOutlined style={{ color: 'white', fontSize: 20 }} />
+            <img
+              src="/logo-buddy.jpg"
+              alt="Lean Buddy logo"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12, display: 'block' }}
+            />
           </div>
           <div>
             <div style={{ fontWeight: 700, color: 'white', fontSize: 16, lineHeight: 1.2 }}>
