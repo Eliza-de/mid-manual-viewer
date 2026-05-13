@@ -71,7 +71,7 @@ export default function Splash() {
 
       {/* Image fills the screen — uses object-fit cover with bottom anchor */}
       <img
-        src="/splash-bg.jpg"
+        src="/splash-bg.png"
         alt=""
         style={imgStyle}
       />
