@@ -1,7 +1,7 @@
 {
   "name": "mid-manual-viewer",
   "version": "0.1.0",
-  "description": "Secure PDF manual viewer for Vibharam Laemchabang Hospital medical instruments",
+  "description": "Lean Buddy By Med-healthup — secure PDF manual viewer (LIFF mobile + desktop admin)",
   "private": true,
   "type": "module",
   "scripts": {

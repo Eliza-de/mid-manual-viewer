@@ -1,9 +1,9 @@
 # MID Manual Viewer
 
-> Secure PDF manual viewer สำหรับเครื่องมือแพทย์
-> โรงพยาบาลวิภาราม แหลมฉบัง
+> Lean Buddy By Med-healthup
+> Secure PDF manual viewer + LINE LIFF + desktop admin console
 
-ระบบดูคู่มือเครื่องมือแพทย์ภายในโรงพยาบาลผ่าน LINE LIFF — ปลอดภัย ห้ามดาวน์โหลด มี watermark ระบุผู้อ่าน + admin console บน desktop
+ระบบดูคู่มือออนไลน์ผ่าน LINE LIFF — ปลอดภัย ห้ามดาวน์โหลด มี watermark ระบุผู้อ่าน + admin console บน desktop
 
 ---
 
@@ -11,7 +11,7 @@
 
 | | |
 |---|---|
-| **Frontend** | React 18 · Vite 5 · Ant Design 5 · Ant Design Mobile · Recharts |
+| **Frontend** | React 18 · Vite 5 · Ant Design 5 · Recharts |
 | **Backend** | Cloudflare Workers (Hono) — `mid-manual-api.elizanu-de.workers.dev` |
 | **Database** | Cloudflare D1 — `mid-manual-db` |
 | **Storage** | Cloudflare R2 — `mid-manual-pages` (1 หน้า = 1 PNG, ส่งผ่าน signed URL) |
@@ -27,7 +27,7 @@ Backend Worker อยู่ใน **repo แยก** ที่ `G:/mid-manual-cf
 
 `src/main.jsx` route ตาม URL path **ก่อน** React mount:
 
-- `/admin/*` → `src/admin/AdminApp.jsx` — desktop admin console, ไม่ใช้ LIFF, login ด้วย QR pairing
+- `/admin/*` → `src/admin/AdminApp.jsx` — desktop admin console (lazy-loaded), ไม่ใช้ LIFF, login ด้วย QR pairing
 - ทุก path อื่น → `src/App.jsx` — LIFF mobile flow (Splash → Register → Pending → PinSetup → PinEntry → Home)
 
 ทั้งสองแชร์ Vite bundle เดียวกัน แต่ tree ของ auth/API client/theme/pages แยกขาดกัน
@@ -71,26 +71,25 @@ Helper อยู่ที่ `src/admin/api/admin.js` (`fileToBase64`, `filesToB
 ```
 mid-manual-viewer/
 ├── README.md              ← ไฟล์นี้
-├── frontend/              ← React + Vite (Cloudflare Pages deploys this)
-│   └── src/
-│       ├── main.jsx       ← path-based split: AdminApp vs App
-│       ├── App.jsx        ← LIFF auth gate
-│       ├── api/           ← LIFF API client + V1/V2 admin wrappers
-│       ├── pages/         ← LIFF pages (Splash/Register/PinEntry/Home/Reader/...)
-│       │   └── admin/     ← LIFF-based admin pages (legacy)
-│       ├── admin/         ← Desktop admin console (Phase 17)
-│       │   ├── AdminApp.jsx   ← tab nav (Dashboard/Upload/Users/Documents/Logs/Notify)
-│       │   ├── api/admin.js   ← adminCall with adminToken
-│       │   ├── lib/adminSession.js
-│       │   └── pages/         ← QrLogin + 6 admin pages
-│       ├── components/    ← DocumentCard, PageImage, PinPad, ...
-│       ├── hooks/         ← useAuth, useDocuments, usePageLoader, useThumbnail, ...
-│       ├── brand.js · brandV2.js   ← palette (legacy + V2)
-│       └── liff/QrConfirmHandler.jsx
-├── docs/                  ← legacy docs (อาจมีข้อมูล Apps Script เก่า — ใช้ตามดุลพินิจ)
-├── HANDOFF.md             ← legacy handoff (เก่า)
-├── apps-script/           ← legacy backend code (dead — ปัจจุบันใช้ Worker)
-└── setup/                 ← bootstrap scripts (one-shot)
+└── frontend/              ← React + Vite (Cloudflare Pages deploys this)
+    ├── .eslintrc.cjs      ← ESLint config
+    ├── public/            ← logo-buddy.png, splash-bg.png, _headers
+    └── src/
+        ├── main.jsx       ← path-based split: AdminApp (lazy) vs App
+        ├── App.jsx        ← LIFF auth gate
+        ├── brand.js       ← BRAND + COLORS
+        ├── api/           ← client, liff, auth, documents, pages, anti_capture, admin
+        ├── pages/         ← LIFF pages (Splash/Register/PinEntry/Home/Reader/...)
+        │   └── admin/     ← LIFF-based admin pages (wired into Home.jsx)
+        ├── admin/         ← Desktop admin console (Phase 17)
+        │   ├── AdminApp.jsx   ← tab nav (Dashboard/Upload/Users/Documents/Logs/Notify)
+        │   ├── api/admin.js   ← adminCall with adminToken
+        │   ├── lib/adminSession.js
+        │   └── pages/         ← QrLogin + 6 admin pages
+        ├── components/    ← DocumentCard, PageImage, PinPad, EditUserModal, ...
+        ├── hooks/         ← useAuth, useDocuments, usePageLoader, useThumbnail, ...
+        ├── liff/QrConfirmHandler.jsx
+        └── utils/format.js
 ```
 
 Backend repo (แยก): `G:/mid-manual-cf/`
@@ -118,7 +117,7 @@ npm install
 cp .env.example .env.local   # ใส่ค่า LIFF ID, API base
 npm run dev                  # http://localhost:5173
 npm run build                # → dist/
-npm run lint
+npm run lint                 # eslint src (exits 0 with warnings only)
 
 # Worker (cwd = G:/mid-manual-cf/workers/)
 npx wrangler dev             # local worker
@@ -141,7 +140,7 @@ npx wrangler d1 execute mid-manual-db --remote --command="SELECT count(*) FROM u
 
 ## Phase roadmap
 
-Phases 0–17 complete (foundation, auth, viewer, watermark/anti-capture, logging, admin panel V1/V2, QR-pair desktop console, R2 binary delivery, analytics)
+Phases 0–17 complete (foundation, auth, viewer, watermark/anti-capture, logging, admin panel, QR-pair desktop console, R2 binary delivery, analytics)
 
 **Current focus:** UX polish — Chapter-N + page-1 thumbnail cards, รวม Dashboard + Analytics, lifecycle actions (permanent delete) สำหรับทั้ง documents และ users
 
@@ -159,8 +158,8 @@ Phases 0–17 complete (foundation, auth, viewer, watermark/anti-capture, loggin
 
 ## License
 
-Internal use only — Vibharam Laemchabang Hospital
+Internal use only — Lean Buddy By Med-healthup
 
 ## Contact
 
-IT Department, Vibharam Laemchabang Hospital
+Lean Buddy By Med-healthup (บริษัท เมดเฮลท์อัพ จำกัด)

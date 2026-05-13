@@ -1,63 +1,67 @@
-# MID Manual Viewer — Frontend
+# Lean Buddy By Med-healthup — Frontend
 
-React + Vite + Ant Design app for the MID Manual Viewer LIFF application.
+React + Vite + Ant Design app for the LINE LIFF mobile viewer and desktop admin console.
 
 ## Development
 
 ```bash
 npm install
 cp .env.example .env.local
-# Edit .env.local with your LIFF ID, Channel ID, and Apps Script URL
+# Edit .env.local with VITE_LIFF_ID, VITE_LINE_CHANNEL_ID, VITE_API_URL
 
-npm run dev
+npm run dev      # http://localhost:5173
+npm run lint     # eslint src
 ```
 
-Open http://localhost:5173 in browser.
-
 > Note: LIFF features (login, profile) only work when opened inside LINE.
-> For local dev outside LINE, the smoke-test will fail at "LIFF init" — this is expected.
+> Local dev outside LINE will fail at "LIFF init" — that's expected.
+> The `/admin` route works in any browser (uses QR pairing, not LIFF).
 
 ## Build
 
 ```bash
-npm run build
-# Output goes to dist/
+npm run build    # → dist/
+npm run preview  # serve dist/ locally
 ```
 
 ## Folder Structure
 
 ```
 src/
-├── main.jsx              ← entry point
-├── App.jsx               ← router
-├── api/
-│   ├── client.js         ← Apps Script API client
-│   └── liff.js           ← LIFF SDK wrapper
-├── pages/
-│   └── Splash.jsx        ← Phase 0 smoke test
-├── styles/
-│   ├── global.css
-│   └── antd-theme.js
-└── ...                   ← Phase 1+ adds more
+├── main.jsx                ← path-based split (lazy-loads AdminApp for /admin/*)
+├── App.jsx                 ← LIFF auth gate
+├── brand.js                ← BRAND + COLORS
+├── api/                    ← client, liff, auth, documents, pages, anti_capture, admin
+├── hooks/                  ← useAuth, useDocuments, useNavigation, usePageLoader,
+│                             useThumbnail, useAntiCapture
+├── liff/QrConfirmHandler.jsx
+├── utils/format.js
+├── pages/                  ← LIFF pages (Splash, Register, PinEntry, Home, Reader, ...)
+│   └── admin/              ← LIFF-based admin pages (mounted from Home.jsx)
+├── admin/                  ← Desktop admin console (QR-login, no LIFF)
+│   ├── AdminApp.jsx
+│   ├── api/admin.js
+│   ├── lib/adminSession.js
+│   └── pages/              ← QrLogin + 6 admin pages
+└── components/             ← shared UI (DocumentCard, PageImage, PinPad,
+                              EditUserModal, EditProfileModal, ...)
 ```
 
 ## Environment Variables
 
-All `VITE_*` vars are inlined into the build at build time.
+All `VITE_*` vars are inlined at build time.
 
 | Var | Purpose |
 |---|---|
 | `VITE_LIFF_ID` | LIFF app ID from LINE Developers Console |
 | `VITE_LINE_CHANNEL_ID` | Parent LINE Login channel ID |
-| `VITE_APPS_SCRIPT_URL` | Deployed Apps Script Web App URL |
+| `VITE_API_URL` | Cloudflare Worker base URL (`https://mid-manual-api.elizanu-de.workers.dev`) |
 
-In production, these come from GitHub Secrets via the deploy workflow.
+Production values are baked in via `vite.config.js` fallback + Cloudflare Pages env.
 
-## Why no localStorage?
+## No localStorage for LIFF session
 
-Per Anthropic's Claude.ai artifact constraints AND for security:
-- We don't persist sensitive state across sessions on the client
-- All session state is in React state + Apps Script-issued session token
-- The session token is stored in `sessionStorage` (cleared on tab close) for Phase 1+
-
-For Phase 0, no storage is used at all.
+The LIFF flow keeps the issued `sessionToken` in `sessionStorage` so it clears on tab
+close. Only the **desktop admin** stores its `adminToken` in `localStorage`
+(`lean_buddy_admin_session`) because the desktop console doesn't have an alternative
+session source (no LIFF re-auth).
