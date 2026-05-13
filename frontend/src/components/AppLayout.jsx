@@ -99,7 +99,7 @@ export default function AppLayout({ category, onCategoryChange, children }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={logoStyle}>
             <img
-              src="/logo-buddy.jpg"
+              src="/logo-buddy.png"
               alt="Lean Buddy logo"
               style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12, display: 'block' }}
             />
