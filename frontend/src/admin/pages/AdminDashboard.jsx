@@ -1,18 +1,29 @@
 /**
- * AdminDashboard — Admin console (Phase 17 + V2 pages)
+ * AdminDashboard — Admin console
  *
- * Stats summary + quick navigation to admin sub-pages
- * Uses adminToken auth (no LIFF)
+ * Combined snapshot + analytics. The standalone Analytics tab was
+ * folded into this page; navigation lives in the top tab bar instead
+ * of the old "เมนูจัดการ" shortcut grid.
  */
 import { useEffect, useState } from 'react';
-import { Tag, Spin, Badge, message } from 'antd';
+import { Tag, Spin, Select, Row, Col, Statistic, Empty, Typography, message } from 'antd';
 import {
-  PlusOutlined, UsergroupAddOutlined, FileTextOutlined,
-  HistoryOutlined, RightOutlined, ReloadOutlined,
-  TeamOutlined, EyeOutlined, LoginOutlined,
-  BarChartOutlined, BellOutlined,
+  ReloadOutlined,
+  TeamOutlined, EyeOutlined, FileTextOutlined, LoginOutlined,
+  UsergroupAddOutlined, UserOutlined, UserAddOutlined,
+  RiseOutlined, FallOutlined,
 } from '@ant-design/icons';
-import { getStats } from '../api/admin';
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell,
+} from 'recharts';
+import {
+  getStats,
+  getAnalyticsOverview, getDailyAccess, getTopDocuments,
+  getRegistrations, getLoginActivity, getCategoryUsage, getTopUsers,
+} from '../api/admin';
+
+const { Text } = Typography;
 
 const MINT_DARK = '#1F4D3F';
 const MINT_MID = '#5DBFA0';
@@ -20,15 +31,41 @@ const MINT_SOFT = '#DCEEE3';
 const MINT_MUTED = '#6B8278';
 const ACCENT_ORANGE = '#E8965B';
 
-export default function AdminDashboard({ user, onNavigate }) {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(false);
+const PIE_COLORS = [MINT_DARK, MINT_MID, '#A4DFCB'];
 
-  async function loadStats() {
+export default function AdminDashboard({ user }) {
+  const [days, setDays] = useState(30);
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [overview, setOverview] = useState(null);
+  const [dailyAccess, setDailyAccess] = useState([]);
+  const [topDocs, setTopDocs] = useState([]);
+  const [registrations, setRegistrations] = useState([]);
+  const [loginActivity, setLoginActivity] = useState([]);
+  const [categoryUsage, setCategoryUsage] = useState([]);
+  const [topUsers, setTopUsers] = useState([]);
+
+  async function loadAll() {
     setLoading(true);
     try {
-      const r = await getStats();
-      setStats(r.stats);
+      const [s, o, da, td, rg, la, cu, tu] = await Promise.all([
+        getStats().catch(() => ({ stats: null })),
+        getAnalyticsOverview(days).catch(() => ({ overview: null })),
+        getDailyAccess(days).catch(() => ({ data: [] })),
+        getTopDocuments(days, 10).catch(() => ({ data: [] })),
+        getRegistrations(days).catch(() => ({ data: [] })),
+        getLoginActivity(Math.min(days, 14)).catch(() => ({ data: [] })),
+        getCategoryUsage(days).catch(() => ({ data: [] })),
+        getTopUsers(days, 10).catch(() => ({ data: [] })),
+      ]);
+      setStats(s.stats || null);
+      setOverview(o.overview || null);
+      setDailyAccess(da.data || []);
+      setTopDocs(td.data || []);
+      setRegistrations(rg.data || []);
+      setLoginActivity(la.data || []);
+      setCategoryUsage(cu.data || []);
+      setTopUsers(tu.data || []);
     } catch (err) {
       message.error(err.message || 'โหลดข้อมูลไม่สำเร็จ');
     } finally {
@@ -36,144 +73,263 @@ export default function AdminDashboard({ user, onNavigate }) {
     }
   }
 
-  useEffect(() => { loadStats(); }, []);
+  useEffect(() => { loadAll(); }, [days]);
 
-  const cards = [
-    {
-      key: 'upload',
-      icon: <PlusOutlined />,
-      title: 'เพิ่มเอกสารใหม่',
-      desc: 'อัปโหลด PNG/JPG เข้าระบบ',
-      onClick: () => onNavigate('upload'),
-    },
-    {
-      key: 'users',
-      icon: <UsergroupAddOutlined />,
-      title: 'จัดการผู้ใช้',
-      desc: 'อนุมัติ / ระงับ / ตั้งสิทธิ์ admin',
-      badge: stats?.users?.pending || 0,
-      onClick: () => onNavigate('users'),
-    },
-    {
-      key: 'documents',
-      icon: <FileTextOutlined />,
-      title: 'จัดการเอกสาร',
-      desc: 'แก้ไข / archive / restore / replace pages',
-      onClick: () => onNavigate('documents'),
-    },
-    {
-      key: 'analytics',
-      icon: <BarChartOutlined />,
-      title: 'Analytics',
-      desc: 'สถิติการใช้งาน + charts',
-      onClick: () => onNavigate('analytics'),
-    },
-    {
-      key: 'logs',
-      icon: <HistoryOutlined />,
-      title: 'ดู Log',
-      desc: 'Auth / Audit / Access logs · Export CSV',
-      onClick: () => onNavigate('logs'),
-    },
-    {
-      key: 'notif',
-      icon: <BellOutlined />,
-      title: 'การแจ้งเตือน',
-      desc: 'ตั้งค่า LINE notifications',
-      onClick: () => onNavigate('notif'),
-    },
-  ];
+  function formatDateShort(d) {
+    if (!d) return '';
+    return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+  }
 
   return (
     <div>
       <div style={pageHeaderStyle}>
         <h1 style={pageTitleStyle}>📊 Admin Dashboard</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: MINT_MUTED }}>
             ยินดีต้อนรับ <strong style={{ color: MINT_DARK }}>{user?.displayName}</strong>
             {user?.department ? ` · ${user.department}` : ''}
           </span>
           <Tag color="gold" style={{ marginInlineEnd: 0 }}>Admin</Tag>
-          <button onClick={loadStats} style={refreshBtnStyle} title="รีเฟรช">
+          <Text style={{ fontSize: 13, color: MINT_MUTED }}>ช่วงเวลา:</Text>
+          <Select
+            value={days}
+            onChange={setDays}
+            style={{ minWidth: 150 }}
+            options={[
+              { label: '7 วันย้อนหลัง', value: 7 },
+              { label: '14 วันย้อนหลัง', value: 14 },
+              { label: '30 วันย้อนหลัง', value: 30 },
+              { label: '60 วันย้อนหลัง', value: 60 },
+              { label: '90 วันย้อนหลัง', value: 90 },
+            ]}
+          />
+          <button onClick={loadAll} style={refreshBtnStyle} title="รีเฟรช">
             <ReloadOutlined spin={loading} />
           </button>
         </div>
       </div>
 
-      {loading && !stats ? (
-        <div style={{ padding: 60, textAlign: 'center' }}><Spin size="large" /></div>
-      ) : stats ? (
-        <div style={statsGridStyle}>
-          <StatCard
-            icon={<TeamOutlined />}
-            label="ผู้ใช้"
-            value={stats.users?.total ?? 0}
-            accent={MINT_DARK}
-            hint={stats.users?.pending > 0 ? `รออนุมัติ ${stats.users.pending}` : null}
-            hintColor="#F59E0B"
-          />
-          <StatCard
-            icon={<FileTextOutlined />}
-            label="เอกสาร active"
-            value={stats.documents?.active ?? 0}
-            accent={MINT_MID}
-            hint={stats.documents?.archived > 0 ? `archived ${stats.documents.archived}` : null}
-          />
-          <StatCard
-            icon={<EyeOutlined />}
-            label="เปิดเอกสารวันนี้"
-            value={stats.today?.accesses ?? 0}
-            accent={ACCENT_ORANGE}
-            hint={<><LoginOutlined style={{ fontSize: 10, marginRight: 2 }} />{stats.today?.logins ?? 0} login</>}
-          />
-          <StatCard
-            icon={<UsergroupAddOutlined />}
-            label="ผู้ใช้ active"
-            value={stats.users?.active ?? 0}
-            accent={MINT_DARK}
-            hint={stats.users?.disabled > 0 ? `ระงับ ${stats.users.disabled}` : null}
-            hintColor="#EF4444"
-          />
-        </div>
-      ) : null}
+      {loading && !stats && !overview ? (
+        <div style={{ padding: 80, textAlign: 'center' }}><Spin size="large" /></div>
+      ) : (
+        <>
+          {/* Snapshot stats */}
+          {stats && (
+            <div style={statsGridStyle}>
+              <SnapshotCard
+                icon={<TeamOutlined />}
+                label="ผู้ใช้"
+                value={stats.users?.total ?? 0}
+                accent={MINT_DARK}
+                hint={stats.users?.pending > 0 ? `รออนุมัติ ${stats.users.pending}` : null}
+                hintColor="#F59E0B"
+              />
+              <SnapshotCard
+                icon={<FileTextOutlined />}
+                label="เอกสาร active"
+                value={stats.documents?.active ?? 0}
+                accent={MINT_MID}
+                hint={stats.documents?.archived > 0 ? `archived ${stats.documents.archived}` : null}
+              />
+              <SnapshotCard
+                icon={<EyeOutlined />}
+                label="เปิดเอกสารวันนี้"
+                value={stats.today?.accesses ?? 0}
+                accent={ACCENT_ORANGE}
+                hint={<><LoginOutlined style={{ fontSize: 10, marginRight: 2 }} />{stats.today?.logins ?? 0} login</>}
+              />
+              <SnapshotCard
+                icon={<UsergroupAddOutlined />}
+                label="ผู้ใช้ active"
+                value={stats.users?.active ?? 0}
+                accent={MINT_DARK}
+                hint={stats.users?.disabled > 0 ? `ระงับ ${stats.users.disabled}` : null}
+                hintColor="#EF4444"
+              />
+            </div>
+          )}
 
-      <div style={{ marginTop: 24 }}>
-        <div style={sectionTitleStyle}>เมนูจัดการ</div>
-        <div style={actionGridStyle}>
-          {cards.map(c => (
-            <div
-              key={c.key}
-              style={actionCardStyle}
-              onClick={c.onClick}
-              role="button"
-              onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(31,77,63,0.12)'}
-              onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 1px 3px rgba(31,77,63,0.06)'}
-            >
-              <div style={actionIconStyle}>
-                {c.badge > 0 ? (
-                  <Badge count={c.badge} offset={[-2, 2]}>
-                    <span style={{ fontSize: 22, color: MINT_DARK }}>{c.icon}</span>
-                  </Badge>
-                ) : (
-                  <span style={{ fontSize: 22, color: MINT_DARK }}>{c.icon}</span>
+          {/* Period overview (trend) */}
+          {overview && (
+            <Row gutter={[12, 12]} style={{ marginTop: 16 }}>
+              <Col xs={12} sm={12} md={6}>
+                <div style={trendCardStyle}>
+                  <Statistic
+                    title={<span style={{ fontSize: 12 }}><EyeOutlined /> เปิดเอกสาร · {days}ว</span>}
+                    value={overview.accesses}
+                    valueStyle={{ color: MINT_DARK, fontSize: 24 }}
+                    suffix={<TrendBadge value={overview.trend_accesses} />}
+                  />
+                </div>
+              </Col>
+              <Col xs={12} sm={12} md={6}>
+                <div style={trendCardStyle}>
+                  <Statistic
+                    title={<span style={{ fontSize: 12 }}><UserOutlined /> ผู้ใช้ active · {days}ว</span>}
+                    value={overview.unique_users}
+                    valueStyle={{ color: MINT_DARK, fontSize: 24 }}
+                    suffix={<TrendBadge value={overview.trend_unique_users} />}
+                  />
+                </div>
+              </Col>
+              <Col xs={12} sm={12} md={6}>
+                <div style={trendCardStyle}>
+                  <Statistic
+                    title={<span style={{ fontSize: 12 }}><LoginOutlined /> เข้าระบบ · {days}ว</span>}
+                    value={overview.logins}
+                    valueStyle={{ color: MINT_MID, fontSize: 24 }}
+                  />
+                </div>
+              </Col>
+              <Col xs={12} sm={12} md={6}>
+                <div style={trendCardStyle}>
+                  <Statistic
+                    title={<span style={{ fontSize: 12 }}><UserAddOutlined /> สมัครใหม่ · {days}ว</span>}
+                    value={overview.new_users}
+                    valueStyle={{ color: ACCENT_ORANGE, fontSize: 24 }}
+                  />
+                </div>
+              </Col>
+            </Row>
+          )}
+
+          {/* Daily access */}
+          <div style={chartCardStyle}>
+            <div style={chartTitleStyle}>📈 การเปิดเอกสารรายวัน</div>
+            {dailyAccess.length === 0 ? <Empty description="ไม่มีข้อมูล" /> : (
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={dailyAccess} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={formatDateShort} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip labelFormatter={formatDateShort} />
+                  <Line type="monotone" dataKey="count" stroke={MINT_DARK} strokeWidth={2}
+                    dot={{ fill: MINT_DARK, r: 3 }} name="ครั้ง" />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Login activity */}
+          <div style={chartCardStyle}>
+            <div style={chartTitleStyle}>🔐 กิจกรรม Login</div>
+            {loginActivity.length === 0 ? <Empty description="ไม่มีข้อมูล" /> : (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={loginActivity} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={formatDateShort} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip labelFormatter={formatDateShort} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="success" stackId="a" fill={MINT_MID} name="สำเร็จ" />
+                  <Bar dataKey="fail" stackId="a" fill={ACCENT_ORANGE} name="ผิด" />
+                  <Bar dataKey="locked" stackId="a" fill="#EF4444" name="ถูก lock" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Top docs */}
+          <div style={chartCardStyle}>
+            <div style={chartTitleStyle}>🏆 Top 10 เอกสารที่เปิดบ่อย</div>
+            {topDocs.length === 0 ? <Empty description="ไม่มีข้อมูล" /> : (
+              <ResponsiveContainer width="100%" height={Math.max(240, topDocs.length * 32)}>
+                <BarChart data={topDocs} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="title" tick={{ fontSize: 10 }} width={180}
+                    tickFormatter={(v) => v?.length > 26 ? v.slice(0, 26) + '...' : v} />
+                  <Tooltip />
+                  <Bar dataKey="views" fill={MINT_DARK} name="ครั้ง" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Category usage + Registrations */}
+          <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+            <Col xs={24} md={12}>
+              <div style={{ ...chartCardStyle, marginBottom: 0, height: '100%' }}>
+                <div style={chartTitleStyle}>📚 หมวดที่ดูบ่อย</div>
+                {categoryUsage.length === 0 || categoryUsage.every(c => !c.views) ? <Empty description="ไม่มีข้อมูล" /> : (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <PieChart>
+                      <Pie data={categoryUsage} dataKey="views" nameKey="label"
+                        cx="50%" cy="50%" outerRadius={80}
+                        label={(e) => e.label} labelLine={false}>
+                        {categoryUsage.map((entry, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
                 )}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={actionTitleStyle}>{c.title}</div>
-                <div style={actionDescStyle}>{c.desc}</div>
+            </Col>
+            <Col xs={24} md={12}>
+              <div style={{ ...chartCardStyle, marginBottom: 0, height: '100%' }}>
+                <div style={chartTitleStyle}>📅 ผู้ใช้สมัครใหม่</div>
+                {registrations.length === 0 ? <Empty description="ไม่มีข้อมูล" /> : (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={registrations} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={formatDateShort} />
+                      <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                      <Tooltip labelFormatter={formatDateShort} />
+                      <Bar dataKey="count" fill={MINT_MID} name="คน" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
-              <RightOutlined style={{ color: '#CBD5E1', fontSize: 14 }} />
-            </div>
-          ))}
-        </div>
-      </div>
+            </Col>
+          </Row>
+
+          {/* Top users */}
+          <div style={chartCardStyle}>
+            <div style={chartTitleStyle}>👥 Top 10 ผู้ใช้ที่ active</div>
+            {topUsers.length === 0 ? <Empty description="ไม่มีข้อมูล" /> : (
+              <div>
+                {topUsers.map((u, i) => (
+                  <div key={u.line_user_id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 0',
+                    borderBottom: i < topUsers.length - 1 ? '0.5px solid #f0f0f0' : 'none',
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%',
+                      background: i < 3 ? MINT_DARK : '#94A3B8',
+                      color: '#fff', fontSize: 12, fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>{i + 1}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Text strong style={{ fontSize: 13 }}>
+                        {u.nickname || u.full_name || u.display_name || u.line_user_id?.slice(0, 12) + '...'}
+                      </Text>
+                      {u.department && (
+                        <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{u.department}</Text>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <Tag color={MINT_DARK} style={{ marginInlineEnd: 0, color: '#fff', borderColor: MINT_DARK }}>
+                        {u.views} ครั้ง
+                      </Tag>
+                      <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 2 }}>
+                        {u.unique_docs} เอกสาร
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-function StatCard({ icon, label, value, accent, hint, hintColor = '#94A3B8' }) {
+function SnapshotCard({ icon, label, value, accent, hint, hintColor = '#94A3B8' }) {
   return (
-    <div style={statCardStyle}>
+    <div style={snapshotCardStyle}>
       <div style={{ fontSize: 12, color: MINT_MUTED, display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ color: accent, fontSize: 14 }}>{icon}</span>
         <span>{label}</span>
@@ -190,11 +346,21 @@ function StatCard({ icon, label, value, accent, hint, hintColor = '#94A3B8' }) {
   );
 }
 
+function TrendBadge({ value }) {
+  if (!value || value === 0) return null;
+  const isUp = value > 0;
+  return (
+    <span style={{ fontSize: 12, color: isUp ? MINT_MID : '#EF4444', marginLeft: 6 }}>
+      {isUp ? <RiseOutlined /> : <FallOutlined />} {Math.abs(value)}%
+    </span>
+  );
+}
+
 const pageHeaderStyle = {
   background: '#fff',
   borderRadius: 14,
   padding: 20,
-  marginBottom: 20,
+  marginBottom: 16,
   boxShadow: '0 1px 3px rgba(31, 77, 63, 0.06)',
   border: '0.5px solid rgba(31, 77, 63, 0.08)',
   display: 'flex',
@@ -229,7 +395,7 @@ const statsGridStyle = {
   gap: 12,
 };
 
-const statCardStyle = {
+const snapshotCardStyle = {
   background: '#fff',
   borderRadius: 14,
   padding: 16,
@@ -237,51 +403,28 @@ const statCardStyle = {
   boxShadow: '0 1px 3px rgba(31, 77, 63, 0.04)',
 };
 
-const sectionTitleStyle = {
-  fontSize: 14,
-  fontWeight: 600,
-  color: MINT_DARK,
-  marginBottom: 10,
-};
-
-const actionGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-  gap: 12,
-};
-
-const actionCardStyle = {
+const trendCardStyle = {
   background: '#fff',
   borderRadius: 14,
   padding: 16,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 14,
-  cursor: 'pointer',
-  border: '0.5px solid rgba(31, 77, 63, 0.06)',
-  boxShadow: '0 1px 3px rgba(31, 77, 63, 0.06)',
-  transition: 'box-shadow 0.15s',
+  height: '100%',
+  border: '0.5px solid rgba(31, 77, 63, 0.08)',
+  boxShadow: '0 1px 3px rgba(31, 77, 63, 0.04)',
 };
 
-const actionIconStyle = {
-  width: 48,
-  height: 48,
-  borderRadius: 12,
-  background: MINT_SOFT,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexShrink: 0,
+const chartCardStyle = {
+  background: '#fff',
+  borderRadius: 14,
+  padding: 20,
+  marginTop: 16,
+  marginBottom: 16,
+  border: '0.5px solid rgba(31, 77, 63, 0.08)',
+  boxShadow: '0 1px 3px rgba(31, 77, 63, 0.04)',
 };
 
-const actionTitleStyle = {
-  fontWeight: 600,
+const chartTitleStyle = {
   fontSize: 15,
+  fontWeight: 600,
   color: MINT_DARK,
-};
-
-const actionDescStyle = {
-  fontSize: 12,
-  color: MINT_MUTED,
-  marginTop: 2,
+  marginBottom: 12,
 };

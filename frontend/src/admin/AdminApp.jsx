@@ -16,7 +16,6 @@ import AdminDashboard from './pages/AdminDashboard';
 import UserManagement from './pages/UserManagement';
 import DocumentManagement from './pages/DocumentManagement';
 import DocumentUpload from './pages/DocumentUpload';
-import Analytics from './pages/Analytics';
 import LogViewer from './pages/LogViewer';
 import NotificationSettings from './pages/NotificationSettings';
 
@@ -33,7 +32,6 @@ const PAGES = {
   upload:    { label: 'เพิ่มเอกสาร', icon: '📤', component: DocumentUpload },
   users:     { label: 'Users',     icon: '👥', component: UserManagement },
   documents: { label: 'Documents', icon: '📄', component: DocumentManagement },
-  analytics: { label: 'Analytics', icon: '📈', component: Analytics },
   logs:      { label: 'Logs',      icon: '📋', component: LogViewer },
   notif:     { label: 'Notify',    icon: '🔔', component: NotificationSettings },
 };
