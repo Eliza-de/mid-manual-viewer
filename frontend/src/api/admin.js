@@ -9,6 +9,51 @@ export async function createDocument(idToken, sessionToken, doc, pages) {
   return post('/api/admin/documents/create', { idToken, sessionToken, payload: { ...doc, pages } });
 }
 
+// LIFF helper to read a File/Blob as base64 (no data: prefix)
+function _fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      const comma = String(result).indexOf(',');
+      resolve(comma >= 0 ? String(result).slice(comma + 1) : String(result));
+    };
+    reader.onerror = () => reject(reader.error || new Error('FileReader error'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Create a video-review document from LIFF admin.
+ * category is forced to 'summary' server-side regardless.
+ */
+export async function createVideoDocument(idToken, sessionToken, doc, videoFile, posterFile, duration) {
+  if (!videoFile) throw new Error('Missing video file');
+  const videoData = await _fileToBase64(videoFile);
+  let poster = null;
+  if (posterFile) {
+    const posterData = await _fileToBase64(posterFile);
+    poster = { data: posterData, mime: posterFile.type || 'image/jpeg' };
+  }
+  return post('/api/admin/documents/createVideo', {
+    idToken, sessionToken,
+    payload: {
+      title: doc.title || '',
+      form_code: doc.form_code || '',
+      category: 'summary',
+      description: doc.description || '',
+      sort_order: doc.sort_order != null ? Number(doc.sort_order) : 999,
+      video: {
+        data: videoData,
+        mime: videoFile.type || 'video/mp4',
+        size: videoFile.size,
+        duration: Math.max(0, Math.floor(Number(duration) || 0)),
+      },
+      poster,
+    }
+  });
+}
+
 // ===== Phase 11: Replace Pages =====
 export async function replacePage(idToken, sessionToken, docId, pageNumber, base64Data) {
   return post('/api/admin/documents/replacePage', {

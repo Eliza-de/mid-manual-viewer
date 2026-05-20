@@ -8,17 +8,26 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { FileTextOutlined, ClockCircleOutlined, RightOutlined } from '@ant-design/icons';
+import { FileTextOutlined, ClockCircleOutlined, RightOutlined,
+         PlayCircleFilled, VideoCameraOutlined } from '@ant-design/icons';
 import { relativeTime } from '../utils/format.js';
 import { COLORS } from '../brand.js';
 import { useThumbnail } from '../hooks/useThumbnail.jsx';
 
 const THUMB_GRADIENT = `linear-gradient(135deg, #A4DFCB, #5DBFA0)`;
 
+function formatDuration(sec) {
+  const s = Math.max(0, Math.floor(sec || 0));
+  const mm = String(Math.floor(s / 60)).padStart(2, '0');
+  const ss = String(s % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
 export default function DocumentCard({ doc, index = 0, onClick }) {
   const cardRef = useRef(null);
   const [visible, setVisible] = useState(false);
-  const { url: thumbUrl } = useThumbnail(doc?.id, visible);
+  const isVideo = doc?.media_type === 'video';
+  const { url: thumbUrl } = useThumbnail(doc?.id, visible, isVideo ? 'video' : 'pages');
 
   useEffect(() => {
     if (visible) return;
@@ -41,7 +50,7 @@ export default function DocumentCard({ doc, index = 0, onClick }) {
     return () => io.disconnect();
   }, [visible]);
 
-  const chapterLabel = `Chapter-${index + 1}`;
+  const chapterLabel = isVideo ? 'VIDEO' : `Chapter-${index + 1}`;
 
   return (
     <div
@@ -67,20 +76,33 @@ export default function DocumentCard({ doc, index = 0, onClick }) {
             draggable={false}
             onContextMenu={(e) => e.preventDefault()}
           />
+        ) : isVideo ? (
+          <VideoCameraOutlined style={{ color: 'white', fontSize: 22 }} />
         ) : (
           <FileTextOutlined style={{ color: 'white', fontSize: 24 }} />
         )}
-        {typeof doc.page_count === 'number' && (
-          <div style={pageCountBadgeStyle}>
-            {doc.page_count}p
+        {isVideo && (
+          <div style={playOverlayStyle}>
+            <PlayCircleFilled style={{ color: 'white', fontSize: 22, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />
           </div>
+        )}
+        {isVideo && doc.video_duration_sec > 0 ? (
+          <div style={pageCountBadgeStyle}>
+            {formatDuration(doc.video_duration_sec)}
+          </div>
+        ) : (
+          !isVideo && typeof doc.page_count === 'number' && (
+            <div style={pageCountBadgeStyle}>
+              {doc.page_count}p
+            </div>
+          )
         )}
       </div>
 
       {/* Info */}
       <div style={infoStyle}>
         <div style={{ marginBottom: 6 }}>
-          <span style={tagStyle}>{chapterLabel}</span>
+          <span style={isVideo ? tagVideoStyle : tagStyle}>{chapterLabel}</span>
         </div>
 
         <div style={titleStyle}>
@@ -176,6 +198,30 @@ const tagStyle = {
   display: 'inline-block',
   background: '#3A4A44',
   color: 'white'
+};
+
+const tagVideoStyle = {
+  ...{
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: 0.4,
+    padding: '2px 8px',
+    borderRadius: 999,
+    display: 'inline-block',
+    color: 'white',
+  },
+  background: '#E8965B',
+};
+
+const playOverlayStyle = {
+  position: 'absolute',
+  inset: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'rgba(0,0,0,0.18)',
+  pointerEvents: 'none',
+  zIndex: 1,
 };
 
 const titleStyle = {

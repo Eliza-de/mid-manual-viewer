@@ -211,6 +211,39 @@ export async function createDocument(doc, files) {
   });
 }
 
+/**
+ * Create a video-review document.
+ *
+ * @param doc        { title, form_code, description, sort_order, category }
+ *                   category is forced to 'summary' (server also validates)
+ * @param videoFile  File (mp4 or webm), max 50 MB
+ * @param posterFile File (jpg/png/webp), optional, max 2 MB
+ * @param duration   number (seconds), computed client-side from <video>.duration
+ */
+export async function createVideoDocument(doc, videoFile, posterFile, duration) {
+  if (!videoFile) throw new Error('Missing video file');
+  const videoData = await fileToBase64(videoFile);
+  let poster = null;
+  if (posterFile) {
+    const posterData = await fileToBase64(posterFile);
+    poster = { data: posterData, mime: posterFile.type || 'image/jpeg' };
+  }
+  return adminCall('/api/admin/documents/createVideo', {
+    title: doc.title || '',
+    form_code: doc.form_code || '',
+    category: 'summary',
+    description: doc.description || '',
+    sort_order: doc.sort_order != null ? Number(doc.sort_order) : 999,
+    video: {
+      data: videoData,
+      mime: videoFile.type || 'video/mp4',
+      size: videoFile.size,
+      duration: Math.max(0, Math.floor(Number(duration) || 0)),
+    },
+    poster,
+  });
+}
+
 export async function replacePage(docId, pageNumber, file) {
   const data = await fileToBase64(file);
   return adminCall('/api/admin/documents/replacePage', {

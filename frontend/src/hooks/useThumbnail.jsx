@@ -14,13 +14,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './useAuth.jsx';
 import { getPage } from '../api/pages.js';
+import { getVideo } from '../api/video.js';
 import { getIdToken } from '../api/liff.js';
 
 const CACHE_TTL_MS = 4 * 60 * 1000;
 const cache = new Map();
 const inflight = new Map();
 
-export function useThumbnail(documentId, enabled = true) {
+/**
+ * @param documentId
+ * @param enabled    gate the network call on IntersectionObserver visibility
+ * @param mediaType  'pages' (default) | 'video' — for video, fetches posterUrl
+ *                   via /api/documents/video instead of page 1
+ */
+export function useThumbnail(documentId, enabled = true, mediaType = 'pages') {
   const auth = useAuth();
   const [url, setUrl] = useState(() => {
     const hit = documentId ? cache.get(documentId) : null;
@@ -52,14 +59,26 @@ export function useThumbnail(documentId, enabled = true) {
     const existing = inflight.get(documentId);
     const promise = existing || (async () => {
       const idToken = getIdToken();
-      const r = await getPage(idToken, auth.session.token, documentId, 1);
-      if (!r.ok) {
-        const err = new Error(r.error || 'thumbnail load failed');
-        err.needsLogin = r.needsLogin;
-        throw err;
+      let u = null;
+      if (mediaType === 'video') {
+        const r = await getVideo(idToken, auth.session.token, documentId);
+        if (!r.ok) {
+          const err = new Error(r.error || 'video poster load failed');
+          err.needsLogin = r.needsLogin;
+          throw err;
+        }
+        u = r.posterUrl || null; // null is OK — caller falls back to icon
+      } else {
+        const r = await getPage(idToken, auth.session.token, documentId, 1);
+        if (!r.ok) {
+          const err = new Error(r.error || 'thumbnail load failed');
+          err.needsLogin = r.needsLogin;
+          throw err;
+        }
+        u = r.url || (r.data ? `data:${r.mimeType || 'image/png'};base64,${r.data}` : null);
+        if (!u) throw new Error('no url in response');
       }
-      const u = r.url || (r.data ? `data:${r.mimeType || 'image/png'};base64,${r.data}` : null);
-      if (!u) throw new Error('no url in response');
+      // Cache even when u is null so we don't keep refetching.
       cache.set(documentId, { url: u, fetchedAt: Date.now() });
       return u;
     })();
@@ -83,7 +102,7 @@ export function useThumbnail(documentId, enabled = true) {
       });
 
     return () => { cancelled = true; };
-  }, [documentId, enabled, auth.session, auth.logout]);
+  }, [documentId, enabled, mediaType, auth.session, auth.logout]);
 
   return { url, loading, error };
 }

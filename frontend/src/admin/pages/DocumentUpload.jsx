@@ -1,17 +1,20 @@
 /**
  * DocumentUpload — Admin console
  *
- * เพิ่มเอกสารใหม่ — multipart upload (PNG/JPG, สูงสุด 100 หน้า, 5MB/ไฟล์)
+ * เพิ่มเอกสารใหม่ — รองรับสองโหมด:
+ *   - PNG/JPG หลายหน้า (โหมดเดิม) สำหรับหมวด เล่ม / บท / รีวิว
+ *   - วิดีโอ MP4/WebM ไฟล์เดียว + โปสเตอร์ (เลือกได้) เฉพาะหมวด "รีวิว"
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Form, Input, Button, Typography, Alert, Radio,
   InputNumber, Upload, Progress, message,
 } from 'antd';
 import {
   InboxOutlined, FileImageOutlined, CheckCircleOutlined, DeleteOutlined,
+  VideoCameraOutlined, PictureOutlined,
 } from '@ant-design/icons';
-import { createDocument } from '../api/admin';
+import { createDocument, createVideoDocument } from '../api/admin';
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
@@ -19,7 +22,40 @@ const { Dragger } = Upload;
 const MINT_DARK = '#1F4D3F';
 const MINT_MID = '#5DBFA0';
 const MINT_SOFT = '#DCEEE3';
-const MINT_MUTED = '#6B8278';
+
+const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+const POSTER_MAX_BYTES = 2 * 1024 * 1024;
+
+function formatMB(bytes) {
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+function formatDuration(sec) {
+  const s = Math.max(0, Math.floor(sec || 0));
+  const mm = String(Math.floor(s / 60)).padStart(2, '0');
+  const ss = String(s % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
+// Read <video>.duration off a File without uploading it
+function probeVideoDuration(file) {
+  return new Promise((resolve) => {
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    const url = URL.createObjectURL(file);
+    let resolved = false;
+    const cleanup = () => {
+      URL.revokeObjectURL(url);
+      v.removeAttribute('src');
+      v.load();
+    };
+    const done = (d) => { if (!resolved) { resolved = true; cleanup(); resolve(d); } };
+    v.onloadedmetadata = () => done(isFinite(v.duration) ? v.duration : 0);
+    v.onerror = () => done(0);
+    setTimeout(() => done(0), 5000);
+    v.src = url;
+  });
+}
 
 export default function DocumentUpload({ onNavigate }) {
   const [form] = Form.useForm();
@@ -27,60 +63,140 @@ export default function DocumentUpload({ onNavigate }) {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  // PDF-image mode
   const [fileList, setFileList] = useState([]);
 
-  function beforeUpload(file) {
+  // Video mode
+  const [contentMode, setContentMode] = useState('pages'); // 'pages' | 'video'
+  const [category, setCategory] = useState('topic');
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [posterFile, setPosterFile] = useState(null);
+  const [posterPreview, setPosterPreview] = useState(null);
+  const posterPreviewRef = useRef(null);
+
+  // Force mode back to 'pages' if user picks a non-summary category
+  useEffect(() => {
+    if (category !== 'summary' && contentMode === 'video') {
+      setContentMode('pages');
+    }
+  }, [category, contentMode]);
+
+  // Cleanup poster object URL
+  useEffect(() => {
+    return () => {
+      if (posterPreviewRef.current) URL.revokeObjectURL(posterPreviewRef.current);
+    };
+  }, []);
+
+  function beforeUploadImage(file) {
     const isImage = file.type === 'image/png' || file.type === 'image/jpeg';
-    if (!isImage) {
-      message.error('รับเฉพาะไฟล์ PNG หรือ JPG');
-      return Upload.LIST_IGNORE;
-    }
-    const isUnder5M = file.size / 1024 / 1024 < 5;
-    if (!isUnder5M) {
-      message.error(`${file.name} เกิน 5MB`);
-      return Upload.LIST_IGNORE;
-    }
+    if (!isImage) { message.error('รับเฉพาะไฟล์ PNG หรือ JPG'); return Upload.LIST_IGNORE; }
+    if (file.size / 1024 / 1024 >= 5) { message.error(`${file.name} เกิน 5MB`); return Upload.LIST_IGNORE; }
     return false;
   }
 
-  function handleChange({ fileList: newFileList }) {
+  function handlePagesChange({ fileList: newFileList }) {
     const sorted = [...newFileList].sort((a, b) => {
-      const aName = a.name || '';
-      const bName = b.name || '';
+      const aName = a.name || ''; const bName = b.name || '';
       return aName.localeCompare(bName, undefined, { numeric: true });
     });
     setFileList(sorted.slice(0, 100));
   }
 
-  async function handleSubmit(values) {
-    if (fileList.length === 0) {
-      setError('กรุณาเลือกไฟล์อย่างน้อย 1 ไฟล์');
+  async function handleVideoSelect(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    const okMime = ['video/mp4', 'video/webm'].includes(file.type);
+    if (!okMime) { message.error('รับเฉพาะ MP4 หรือ WebM'); return; }
+    if (file.size > VIDEO_MAX_BYTES) {
+      message.error(`ไฟล์เกิน 50 MB (${formatMB(file.size)})`);
       return;
+    }
+    const duration = await probeVideoDuration(file);
+    setVideoFile(file);
+    setVideoDuration(duration);
+  }
+
+  function handlePosterSelect(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const okMime = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type);
+    if (!okMime) { message.error('โปสเตอร์รับ JPG/PNG/WebP'); return; }
+    if (file.size > POSTER_MAX_BYTES) {
+      message.error(`โปสเตอร์เกิน 2 MB (${formatMB(file.size)})`);
+      return;
+    }
+    if (posterPreviewRef.current) URL.revokeObjectURL(posterPreviewRef.current);
+    const url = URL.createObjectURL(file);
+    posterPreviewRef.current = url;
+    setPosterFile(file);
+    setPosterPreview(url);
+  }
+
+  function clearVideo() {
+    setVideoFile(null);
+    setVideoDuration(0);
+  }
+  function clearPoster() {
+    if (posterPreviewRef.current) URL.revokeObjectURL(posterPreviewRef.current);
+    posterPreviewRef.current = null;
+    setPosterFile(null);
+    setPosterPreview(null);
+  }
+
+  async function handleSubmit(values) {
+    setError(null); setSuccess(null);
+
+    if (contentMode === 'video') {
+      if (!videoFile) { setError('กรุณาเลือกไฟล์วิดีโอ'); return; }
+      if (values.category !== 'summary') {
+        setError('วิดีโออนุญาตเฉพาะหมวด "รีวิว" เท่านั้น'); return;
+      }
+    } else {
+      if (fileList.length === 0) { setError('กรุณาเลือกไฟล์อย่างน้อย 1 ไฟล์'); return; }
     }
 
     setUploading(true);
-    setError(null);
-    setSuccess(null);
     setProgress(15);
 
     try {
-      const files = fileList.map(f => f.originFileObj).filter(Boolean);
-      setProgress(40);
-
-      const r = await createDocument({
-        title: values.title,
-        form_code: values.form_code || '',
-        category: values.category,
-        description: values.description || '',
-        sort_order: values.sort_order || 999,
-      }, files);
+      let r;
+      if (contentMode === 'video') {
+        setProgress(40);
+        r = await createVideoDocument({
+          title: values.title,
+          form_code: values.form_code || '',
+          description: values.description || '',
+          sort_order: values.sort_order || 999,
+        }, videoFile, posterFile, videoDuration);
+      } else {
+        const files = fileList.map(f => f.originFileObj).filter(Boolean);
+        setProgress(40);
+        r = await createDocument({
+          title: values.title,
+          form_code: values.form_code || '',
+          category: values.category,
+          description: values.description || '',
+          sort_order: values.sort_order || 999,
+        }, files);
+      }
 
       setProgress(100);
-
       const doc = r.document || {};
-      setSuccess(`เพิ่มเอกสารสำเร็จ: ${doc.title || values.title}${doc.page_count ? ` (${doc.page_count} หน้า)` : ''}`);
+      const detail = doc.media_type === 'video'
+        ? `วิดีโอ ${formatMB(doc.video_size || 0)}${doc.video_duration_sec ? ` · ${formatDuration(doc.video_duration_sec)}` : ''}`
+        : (doc.page_count ? `${doc.page_count} หน้า` : '');
+      setSuccess(`เพิ่มเอกสารสำเร็จ: ${doc.title || values.title}${detail ? ` (${detail})` : ''}`);
+
       form.resetFields();
       setFileList([]);
+      clearVideo();
+      clearPoster();
+      setContentMode('pages');
       setTimeout(() => setUploading(false), 500);
     } catch (err) {
       setError(err.message || 'อัปโหลดไม่สำเร็จ');
@@ -88,7 +204,7 @@ export default function DocumentUpload({ onNavigate }) {
     }
   }
 
-  const canSubmit = fileList.length > 0 && !uploading;
+  const canSubmit = !uploading && (contentMode === 'video' ? !!videoFile : fileList.length > 0);
 
   return (
     <div>
@@ -96,7 +212,9 @@ export default function DocumentUpload({ onNavigate }) {
         <div>
           <h1 style={pageTitleStyle}>📤 เพิ่มเอกสารใหม่</h1>
           <Text type="secondary" style={{ fontSize: 13 }}>
-            รองรับ PNG/JPG · สูงสุด 100 หน้า · 5MB ต่อไฟล์
+            {contentMode === 'video'
+              ? 'วิดีโอ MP4/WebM · สูงสุด 50 MB · โปสเตอร์ JPG/PNG/WebP สูงสุด 2 MB'
+              : 'รองรับ PNG/JPG · สูงสุด 100 หน้า · 5MB ต่อไฟล์'}
           </Text>
         </div>
         {onNavigate && (
@@ -126,9 +244,12 @@ export default function DocumentUpload({ onNavigate }) {
       )}
 
       <Form form={form} layout="vertical" onFinish={handleSubmit}
-        requiredMark={false} disabled={uploading}>
+        requiredMark={false} disabled={uploading}
+        onValuesChange={(changed) => {
+          if (changed.category !== undefined) setCategory(changed.category);
+        }}>
         <div style={twoColStyle}>
-          {/* Left column: metadata */}
+          {/* Left: metadata */}
           <div style={cardStyle}>
             <Title level={5} style={{ marginTop: 0, marginBottom: 16, color: MINT_DARK }}>
               📝 ข้อมูลเอกสาร
@@ -159,45 +280,73 @@ export default function DocumentUpload({ onNavigate }) {
               </Radio.Group>
             </Form.Item>
 
+            {category === 'summary' && (
+              <Form.Item label="เนื้อหา" style={{ marginBottom: 16 }}>
+                <Radio.Group
+                  value={contentMode}
+                  onChange={(e) => setContentMode(e.target.value)}
+                  buttonStyle="solid"
+                  disabled={uploading}
+                >
+                  <Radio.Button value="pages"><PictureOutlined /> รูปภาพ</Radio.Button>
+                  <Radio.Button value="video"><VideoCameraOutlined /> วิดีโอ</Radio.Button>
+                </Radio.Group>
+              </Form.Item>
+            )}
+
             <Form.Item label="คำอธิบาย" name="description" style={{ marginBottom: 0 }}>
               <Input.TextArea rows={4} maxLength={500} showCount placeholder="ไม่บังคับ" />
             </Form.Item>
           </div>
 
-          {/* Right column: file dragger */}
+          {/* Right: file uploader */}
           <div style={cardStyle}>
-            <Title level={5} style={{ marginTop: 0, marginBottom: 16, color: MINT_DARK }}>
-              📁 ไฟล์ ({fileList.length}/100)
-            </Title>
-
-            <Form.Item required style={{ marginBottom: 0 }}>
-              <Dragger
-                multiple
-                accept="image/png,image/jpeg"
-                fileList={fileList}
-                beforeUpload={beforeUpload}
-                onChange={handleChange}
-                showUploadList={{
-                  showRemoveIcon: !uploading,
-                  removeIcon: <DeleteOutlined />,
-                }}
-                style={{ background: MINT_SOFT, borderColor: MINT_MID }}
-              >
-                <p className="ant-upload-drag-icon">
-                  <InboxOutlined style={{ color: MINT_MID, fontSize: 48 }} />
-                </p>
-                <p className="ant-upload-text" style={{ color: MINT_DARK, fontSize: 15, fontWeight: 500 }}>
-                  คลิกหรือลากไฟล์มาเพื่ออัปโหลด
-                </p>
-                <p className="ant-upload-hint" style={{ fontSize: 12 }}>
-                  ไฟล์จะเรียงตามชื่อ — ใช้ชื่อ page_001.png, page_002.png...
-                </p>
-              </Dragger>
-            </Form.Item>
+            {contentMode === 'video' ? (
+              <VideoUploader
+                videoFile={videoFile}
+                videoDuration={videoDuration}
+                onPick={handleVideoSelect}
+                onClear={clearVideo}
+                posterFile={posterFile}
+                posterPreview={posterPreview}
+                onPickPoster={handlePosterSelect}
+                onClearPoster={clearPoster}
+                disabled={uploading}
+              />
+            ) : (
+              <>
+                <Title level={5} style={{ marginTop: 0, marginBottom: 16, color: MINT_DARK }}>
+                  📁 ไฟล์ ({fileList.length}/100)
+                </Title>
+                <Form.Item required style={{ marginBottom: 0 }}>
+                  <Dragger
+                    multiple
+                    accept="image/png,image/jpeg"
+                    fileList={fileList}
+                    beforeUpload={beforeUploadImage}
+                    onChange={handlePagesChange}
+                    showUploadList={{
+                      showRemoveIcon: !uploading,
+                      removeIcon: <DeleteOutlined />,
+                    }}
+                    style={{ background: MINT_SOFT, borderColor: MINT_MID }}
+                  >
+                    <p className="ant-upload-drag-icon">
+                      <InboxOutlined style={{ color: MINT_MID, fontSize: 48 }} />
+                    </p>
+                    <p className="ant-upload-text" style={{ color: MINT_DARK, fontSize: 15, fontWeight: 500 }}>
+                      คลิกหรือลากไฟล์มาเพื่ออัปโหลด
+                    </p>
+                    <p className="ant-upload-hint" style={{ fontSize: 12 }}>
+                      ไฟล์จะเรียงตามชื่อ — ใช้ชื่อ page_001.png, page_002.png...
+                    </p>
+                  </Dragger>
+                </Form.Item>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Submit row */}
         <div style={{ ...cardStyle, marginTop: 16, padding: 16 }}>
           <Form.Item style={{ marginBottom: 0 }}>
             <Button
@@ -206,13 +355,17 @@ export default function DocumentUpload({ onNavigate }) {
               block
               loading={uploading}
               size="large"
-              icon={<FileImageOutlined />}
+              icon={contentMode === 'video' ? <VideoCameraOutlined /> : <FileImageOutlined />}
               disabled={!canSubmit}
               style={canSubmit
                 ? { background: MINT_DARK, borderColor: MINT_DARK, height: 48, fontWeight: 500, fontSize: 15 }
                 : { background: '#E5E7EB', borderColor: '#E5E7EB', color: '#9CA3AF', height: 48, fontWeight: 500, fontSize: 15 }}
             >
-              {uploading ? 'กำลังอัปโหลด...' : `อัปโหลด ${fileList.length} ไฟล์`}
+              {uploading
+                ? 'กำลังอัปโหลด...'
+                : contentMode === 'video'
+                  ? (videoFile ? `อัปโหลดวิดีโอ (${formatMB(videoFile.size)})` : 'เลือกวิดีโอก่อน')
+                  : `อัปโหลด ${fileList.length} ไฟล์`}
             </Button>
           </Form.Item>
         </div>
@@ -220,6 +373,124 @@ export default function DocumentUpload({ onNavigate }) {
     </div>
   );
 }
+
+function VideoUploader({
+  videoFile, videoDuration, onPick, onClear,
+  posterFile, posterPreview, onPickPoster, onClearPoster,
+  disabled
+}) {
+  const videoInputRef = useRef(null);
+  const posterInputRef = useRef(null);
+
+  return (
+    <>
+      <Title level={5} style={{ marginTop: 0, marginBottom: 16, color: MINT_DARK }}>
+        🎬 วิดีโอรีวิว
+      </Title>
+
+      {/* Video picker */}
+      <div style={{ marginBottom: 16 }}>
+        <Text style={labelStyle}>ไฟล์วิดีโอ *</Text>
+        {!videoFile ? (
+          <div
+            style={pickerStyle}
+            onClick={() => !disabled && videoInputRef.current?.click()}
+            role="button"
+          >
+            <VideoCameraOutlined style={{ fontSize: 40, color: MINT_MID }} />
+            <div style={{ color: MINT_DARK, fontWeight: 500, marginTop: 8 }}>
+              คลิกเพื่อเลือกไฟล์วิดีโอ
+            </div>
+            <div style={{ fontSize: 12, color: '#6B8278', marginTop: 4 }}>
+              MP4 / WebM · สูงสุด 50 MB
+            </div>
+          </div>
+        ) : (
+          <div style={selectedFileStyle}>
+            <VideoCameraOutlined style={{ color: MINT_DARK, fontSize: 20 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 500, color: MINT_DARK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {videoFile.name}
+              </div>
+              <div style={{ fontSize: 11, color: '#6B8278' }}>
+                {formatMB(videoFile.size)}{videoDuration ? ` · ${formatDuration(videoDuration)}` : ''}
+              </div>
+            </div>
+            <Button size="small" icon={<DeleteOutlined />} onClick={onClear} disabled={disabled} />
+          </div>
+        )}
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/mp4,video/webm"
+          style={{ display: 'none' }}
+          onChange={onPick}
+        />
+      </div>
+
+      {/* Poster picker */}
+      <div>
+        <Text style={labelStyle}>โปสเตอร์ (ภาพปก) — ไม่บังคับ</Text>
+        {!posterFile ? (
+          <div
+            style={pickerStyle}
+            onClick={() => !disabled && posterInputRef.current?.click()}
+            role="button"
+          >
+            <PictureOutlined style={{ fontSize: 32, color: MINT_MID }} />
+            <div style={{ color: MINT_DARK, fontWeight: 500, marginTop: 6 }}>
+              เลือกภาพปก
+            </div>
+            <div style={{ fontSize: 12, color: '#6B8278', marginTop: 4 }}>
+              JPG / PNG / WebP · สูงสุด 2 MB
+            </div>
+          </div>
+        ) : (
+          <div style={selectedFileStyle}>
+            {posterPreview && (
+              <img src={posterPreview} alt="" style={{ width: 48, height: 60, objectFit: 'cover', borderRadius: 6 }} />
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 500, color: MINT_DARK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {posterFile.name}
+              </div>
+              <div style={{ fontSize: 11, color: '#6B8278' }}>{formatMB(posterFile.size)}</div>
+            </div>
+            <Button size="small" icon={<DeleteOutlined />} onClick={onClearPoster} disabled={disabled} />
+          </div>
+        )}
+        <input
+          ref={posterInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          style={{ display: 'none' }}
+          onChange={onPickPoster}
+        />
+      </div>
+    </>
+  );
+}
+
+const labelStyle = { display: 'block', fontSize: 13, color: MINT_DARK, marginBottom: 6, fontWeight: 500 };
+
+const pickerStyle = {
+  background: MINT_SOFT,
+  border: `1.5px dashed ${MINT_MID}`,
+  borderRadius: 10,
+  padding: '20px 12px',
+  textAlign: 'center',
+  cursor: 'pointer',
+};
+
+const selectedFileStyle = {
+  background: '#F0F9F3',
+  border: `1px solid ${MINT_MID}`,
+  borderRadius: 10,
+  padding: '10px 12px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+};
 
 const pageHeaderStyle = {
   background: '#fff', borderRadius: 14, padding: '16px 20px', marginBottom: 16,

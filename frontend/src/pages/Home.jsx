@@ -9,6 +9,7 @@ import { NavigationProvider, useNavigation } from '../hooks/useNavigation.jsx';
 import AppLayout from '../components/AppLayout.jsx';
 import CategoryPage from './CategoryPage.jsx';
 import Reader from './Reader.jsx';
+import VideoReader from './VideoReader.jsx';
 import AdminDashboard from './admin/AdminDashboard.jsx';
 import DocumentUpload from './admin/DocumentUpload.jsx';
 import UserManagement from './admin/UserManagement.jsx';
@@ -39,7 +40,9 @@ function HomeInner() {
     return <AdminDashboard />;
   }
 
-  if (nav.isReading) return <Reader />;
+  if (nav.isReading) {
+    return nav.currentDoc?.media_type === 'video' ? <VideoReader /> : <Reader />;
+  }
 
   return (
     <AppLayout category={category} onCategoryChange={setCategory}>
