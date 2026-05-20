@@ -22,7 +22,8 @@ export default function CategoryPage({ category }) {
   const info = CATEGORY_INFO[category] || CATEGORY_INFO.topic;
 
   function handleSelect(doc) {
-    if (!doc.page_count || doc.page_count < 1) {
+    // Videos have page_count=0 by design — gate only image docs by page_count.
+    if (doc.media_type !== 'video' && (!doc.page_count || doc.page_count < 1)) {
       console.warn('Document has no pages:', doc);
       return;
     }
