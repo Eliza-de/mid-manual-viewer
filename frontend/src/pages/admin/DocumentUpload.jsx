@@ -3,7 +3,7 @@
  *
  * รองรับสองโหมด:
  *   - PNG/JPG หลายหน้า (โหมดเดิม)
- *   - วิดีโอ MP4/WebM ไฟล์เดียว + โปสเตอร์ (เลือกได้) — เฉพาะหมวด "รีวิว"
+ *   - วิดีโอ MP4/WebM ไฟล์เดียว + โปสเตอร์ (เลือกได้) — เฉพาะหมวด "คลิปความรู้"
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -137,7 +137,7 @@ export default function DocumentUpload() {
 
     if (contentMode === 'video') {
       if (!videoFile) { setError('กรุณาเลือกไฟล์วิดีโอ'); return; }
-      if (values.category !== 'summary') { setError('วิดีโอใช้ได้เฉพาะหมวด "รีวิว"'); return; }
+      if (values.category !== 'summary') { setError('วิดีโอใช้ได้เฉพาะหมวด "คลิปความรู้"'); return; }
     } else {
       if (fileList.length === 0) { setError('กรุณาเลือกไฟล์อย่างน้อย 1 ไฟล์'); return; }
     }
@@ -217,7 +217,7 @@ export default function DocumentUpload() {
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <div>
                 <Title level={5} style={{ margin: 0, color: COLORS.primary }}>
-                  {contentMode === 'video' ? '🎬 อัปโหลดวิดีโอรีวิว' : '📤 อัปโหลดเอกสาร'}
+                  {contentMode === 'video' ? '🎬 อัปโหลดวิดีโอคลิปความรู้' : '📤 อัปโหลดเอกสาร'}
                 </Title>
                 <Text type="secondary" style={{ fontSize: 12 }}>
                   {contentMode === 'video'
@@ -261,7 +261,7 @@ export default function DocumentUpload() {
                   <Radio.Group>
                     <Radio value="full_book">เล่ม</Radio>
                     <Radio value="topic">บท</Radio>
-                    <Radio value="summary">รีวิว</Radio>
+                    <Radio value="summary">คลิปความรู้</Radio>
                   </Radio.Group>
                 </Form.Item>
 

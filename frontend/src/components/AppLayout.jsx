@@ -89,7 +89,7 @@ export default function AppLayout({ category, onCategoryChange, children }) {
   const tabs = [
     { key: 'full_book', icon: <BookOutlined />, title: 'เล่ม' },
     { key: 'topic', icon: <FileTextOutlined />, title: 'บท' },
-    { key: 'summary', icon: <UnorderedListOutlined />, title: 'รีวิว' }
+    { key: 'summary', icon: <UnorderedListOutlined />, title: 'คลิปความรู้' }
   ];
 
   return (

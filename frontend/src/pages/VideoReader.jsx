@@ -1,5 +1,5 @@
 /**
- * VideoReader — เครื่องเล่นวิดีโอรีวิว (LIFF mobile)
+ * VideoReader — เครื่องเล่นวิดีโอคลิปความรู้ (LIFF mobile)
  *
  * Layout: top bar (compact) + video fills remaining viewport (object-contain).
  * Autoplay: tries with sound first, falls back to muted if browser blocks

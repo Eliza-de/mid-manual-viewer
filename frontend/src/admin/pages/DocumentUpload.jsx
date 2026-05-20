@@ -2,8 +2,8 @@
  * DocumentUpload — Admin console
  *
  * เพิ่มเอกสารใหม่ — รองรับสองโหมด:
- *   - PNG/JPG หลายหน้า (โหมดเดิม) สำหรับหมวด เล่ม / บท / รีวิว
- *   - วิดีโอ MP4/WebM ไฟล์เดียว + โปสเตอร์ (เลือกได้) เฉพาะหมวด "รีวิว"
+ *   - PNG/JPG หลายหน้า (โหมดเดิม) สำหรับหมวด เล่ม / บท / คลิปความรู้
+ *   - วิดีโอ MP4/WebM ไฟล์เดียว + โปสเตอร์ (เลือกได้) เฉพาะหมวด "คลิปความรู้"
  */
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -154,7 +154,7 @@ export default function DocumentUpload({ onNavigate }) {
     if (contentMode === 'video') {
       if (!videoFile) { setError('กรุณาเลือกไฟล์วิดีโอ'); return; }
       if (values.category !== 'summary') {
-        setError('วิดีโออนุญาตเฉพาะหมวด "รีวิว" เท่านั้น'); return;
+        setError('วิดีโออนุญาตเฉพาะหมวด "คลิปความรู้" เท่านั้น'); return;
       }
     } else {
       if (fileList.length === 0) { setError('กรุณาเลือกไฟล์อย่างน้อย 1 ไฟล์'); return; }
@@ -276,7 +276,7 @@ export default function DocumentUpload({ onNavigate }) {
               <Radio.Group buttonStyle="solid">
                 <Radio.Button value="full_book">เล่ม</Radio.Button>
                 <Radio.Button value="topic">บท</Radio.Button>
-                <Radio.Button value="summary">รีวิว</Radio.Button>
+                <Radio.Button value="summary">คลิปความรู้</Radio.Button>
               </Radio.Group>
             </Form.Item>
 
@@ -385,7 +385,7 @@ function VideoUploader({
   return (
     <>
       <Title level={5} style={{ marginTop: 0, marginBottom: 16, color: MINT_DARK }}>
-        🎬 วิดีโอรีวิว
+        🎬 วิดีโอคลิปความรู้
       </Title>
 
       {/* Video picker */}

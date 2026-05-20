@@ -13,7 +13,7 @@ const { Title, Text } = Typography;
 const CATEGORY_INFO = {
   full_book: { title: 'คู่มือเต็มเล่ม', icon: '📚', description: 'คู่มือผู้ใช้แบบเต็ม สำหรับการอ้างอิง' },
   topic: { title: 'เรื่อง / ฟอร์ม', icon: '📑', description: 'ฟอร์มและเอกสารแยกตามเรื่อง' },
-  summary: { title: 'สรุป', icon: '📋', description: 'สรุปสั้นๆ สำหรับอ่านเร็ว' }
+  summary: { title: 'คลิปความรู้', icon: '🎬', description: 'คลิปความรู้และวิดีโอ' }
 };
 
 export default function CategoryPage({ category }) {

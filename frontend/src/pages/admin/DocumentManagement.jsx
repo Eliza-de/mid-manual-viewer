@@ -35,13 +35,13 @@ const { Text } = Typography;
 const CATEGORY_LABEL = {
   full_book: 'เล่ม',
   topic: 'บท',
-  summary: 'รีวิว'
+  summary: 'คลิปความรู้'
 };
 
 const CATEGORY_OPTIONS = [
   { label: 'เล่ม', value: 'full_book' },
   { label: 'บท', value: 'topic' },
-  { label: 'รีวิว', value: 'summary' }
+  { label: 'คลิปความรู้', value: 'summary' }
 ];
 
 // Tag color by form_code prefix (matches Home V2)
@@ -398,7 +398,7 @@ export default function DocumentManagement() {
             <Radio.Group>
               <Radio value="full_book">เล่ม</Radio>
               <Radio value="topic">บท</Radio>
-              <Radio value="summary">รีวิว</Radio>
+              <Radio value="summary">คลิปความรู้</Radio>
             </Radio.Group>
           </Form.Item>
           <Form.Item label="คำอธิบาย" name="description">
@@ -430,7 +430,7 @@ export default function DocumentManagement() {
         >
           <Radio.Button value="full_book">เล่ม</Radio.Button>
           <Radio.Button value="topic">บท</Radio.Button>
-          <Radio.Button value="summary">รีวิว</Radio.Button>
+          <Radio.Button value="summary">คลิปความรู้</Radio.Button>
         </Radio.Group>
       </Modal>
 
