@@ -29,6 +29,19 @@ export async function updateProfile(idToken, { full_name, nickname, login_code }
   });
 }
 
+// Claim a pre-created shell row by login_code → promote to real LINE user
+export async function claimInvite(idToken, login_code) {
+  return post('/api/auth/claim', {
+    idToken,
+    payload: { login_code }
+  });
+}
+
+// Self profile (PIN-gated) for MemberApp
+export async function getMyProfile(idToken, sessionToken) {
+  return post('/api/auth/myProfile', { idToken, sessionToken });
+}
+
 export async function setPin(idToken, pin) {
   return post('/api/auth/setPin', {
     idToken,

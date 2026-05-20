@@ -17,10 +17,12 @@ import {
 } from '@ant-design/icons';
 import {
   listUsers, approveUser, disableUser, enableUser,
-  toggleAdmin, resetUserPin, deleteUser, updateUser,
+  toggleAdmin, resetUserPin, deleteUser, updateUser, createMember,
   bulkApproveUsers, bulkDisableUsers, bulkEnableUsers, bulkDeleteUsers,
 } from '../api/admin';
 import EditUserModal from '../../components/EditUserModal.jsx';
+import CreateMemberModal from '../../components/CreateMemberModal.jsx';
+import { PlusOutlined, ClockCircleOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -55,6 +57,7 @@ export default function UserManagement({ user: currentUser }) {
   const [selected, setSelected] = useState(new Map());
   const selectedCount = selected.size;
   const [editingUser, setEditingUser] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const selfId = currentUser?.lineUserId || currentUser?.line_user_id;
 
@@ -285,6 +288,8 @@ export default function UserManagement({ user: currentUser }) {
   function renderUserCard(u) {
     const isSelf = u.line_user_id === selfId;
     const isChecked = selected.has(u.line_user_id);
+    const isShell = typeof u.line_user_id === 'string' && u.line_user_id.startsWith('shell:');
+    const displayLabel = isShell ? (u.full_name || u.nickname || '(ยังไม่ผูก LINE)') : u.display_name;
     return (
       <Card
         key={u.line_user_id}
@@ -292,7 +297,7 @@ export default function UserManagement({ user: currentUser }) {
         style={{
           marginBottom: 8,
           borderColor: isChecked ? MINT_DARK : 'rgba(31,77,63,0.08)',
-          background: isChecked ? MINT_SOFT : '#fff',
+          background: isChecked ? MINT_SOFT : (isShell ? '#FFFBEB' : '#fff'),
           borderRadius: 12,
           borderWidth: '0.5px',
         }}
@@ -302,10 +307,12 @@ export default function UserManagement({ user: currentUser }) {
           <Checkbox checked={isChecked} disabled={isSelf} onChange={() => toggleSelect(u)} />
           {u.picture_url
             ? <Avatar src={u.picture_url} size={40} />
-            : <Avatar icon={<UserOutlined />} size={40} />}
+            : <Avatar icon={isShell ? <ClockCircleOutlined /> : <UserOutlined />} size={40}
+                style={isShell ? { background: '#F59E0B' } : undefined} />}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <Text strong style={{ fontSize: 14 }}>{u.display_name}</Text>
+              <Text strong style={{ fontSize: 14 }}>{displayLabel}</Text>
+              {isShell && <Tag color="orange" style={{ marginInlineEnd: 0 }}>รอ claim</Tag>}
               {u.is_admin && <Tag color="gold" style={{ marginInlineEnd: 0 }}>Admin</Tag>}
               {isSelf && <Tag color="blue" style={{ marginInlineEnd: 0 }}>คุณ</Tag>}
             </div>
@@ -346,10 +353,27 @@ export default function UserManagement({ user: currentUser }) {
     <div>
       <div style={pageHeaderStyle}>
         <h1 style={pageTitleStyle}>👥 จัดการผู้ใช้</h1>
-        <button onClick={load} style={refreshBtnStyle} title="รีเฟรช">
-          <ReloadOutlined spin={loading} />
-        </button>
+        <Space>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setCreateOpen(true)}
+            style={{ background: MINT_DARK, borderColor: MINT_DARK }}
+          >
+            เพิ่มสมาชิก
+          </Button>
+          <button onClick={load} style={refreshBtnStyle} title="รีเฟรช">
+            <ReloadOutlined spin={loading} />
+          </button>
+        </Space>
       </div>
+
+      <CreateMemberModal
+        open={createOpen}
+        onClose={() => { setCreateOpen(false); load(); }}
+        onSubmit={(fields) => createMember(fields)}
+      />
+
 
       <div style={cardStyle}>
         <Tabs

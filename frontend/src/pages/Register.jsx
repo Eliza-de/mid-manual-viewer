@@ -1,19 +1,14 @@
 /**
- * Register — 3 simple text fields (rebranded)
- *   - ชื่อ-สกุล
- *   - ชื่อเล่น
- *   - ตั้งค่ารหัสล็อกอิน (text ปกติ)
- *
- * After submit → status='pending' → goes to Pending page
- *               (or 'active' if bootstrap admin → PinSetup)
- * PIN is set in PinSetup page (unchanged from before).
+ * Register — 2 โหมด:
+ *   - "มีรหัสเชิญ"  → กรอก login_code อย่างเดียว → /auth/claim → ไป PinSetup
+ *   - "ลงทะเบียนเอง" → กรอก full_name + nickname + login_code → /auth/register → รอ admin อนุมัติ
  */
 
 import { useState } from 'react';
-import { Card, Form, Input, Button, Typography, Alert, Space, Avatar } from 'antd';
-import { UserOutlined } from '@ant-design/icons';
+import { Card, Form, Input, Button, Typography, Alert, Space, Avatar, Radio } from 'antd';
+import { UserOutlined, KeyOutlined, FormOutlined } from '@ant-design/icons';
 import { useAuth } from '../hooks/useAuth.jsx';
-import { register } from '../api/auth.js';
+import { register, claimInvite } from '../api/auth.js';
 import { getIdToken } from '../api/liff.js';
 import { BRAND, COLORS } from '../brand.js';
 
@@ -21,6 +16,7 @@ const { Title, Text, Paragraph } = Typography;
 
 export default function Register() {
   const auth = useAuth();
+  const [mode, setMode] = useState('claim');  // 'claim' | 'self'
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [form] = Form.useForm();
@@ -30,11 +26,16 @@ export default function Register() {
     setError(null);
     try {
       const idToken = getIdToken();
-      const r = await register(idToken, {
-        full_name: values.full_name,
-        nickname: values.nickname,
-        login_code: values.login_code
-      });
+      let r;
+      if (mode === 'claim') {
+        r = await claimInvite(idToken, values.login_code?.trim());
+      } else {
+        r = await register(idToken, {
+          full_name: values.full_name?.trim(),
+          nickname: values.nickname?.trim(),
+          login_code: values.login_code?.trim()
+        });
+      }
       if (!r.ok) {
         setError(r.error);
         setSubmitting(false);
@@ -73,8 +74,26 @@ export default function Register() {
             </Card>
           )}
 
+          {/* Mode toggle */}
+          <Radio.Group
+            value={mode}
+            onChange={(e) => { setMode(e.target.value); setError(null); form.resetFields(); }}
+            style={{ width: '100%' }}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <Radio.Button value="claim" style={modeBtnStyle}>
+                <KeyOutlined /> มีรหัสเชิญ
+              </Radio.Button>
+              <Radio.Button value="self" style={modeBtnStyle}>
+                <FormOutlined /> ลงทะเบียนเอง
+              </Radio.Button>
+            </div>
+          </Radio.Group>
+
           <Paragraph style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-            กรุณากรอกข้อมูลเพื่อขอเข้าใช้งาน ระบบ admin จะพิจารณาอนุมัติภายหลัง
+            {mode === 'claim'
+              ? 'กรอกรหัสเชิญที่ได้รับจาก admin เพื่อรับสิทธิ์เข้าใช้งานทันที'
+              : 'กรอกข้อมูลเพื่อขอเข้าใช้งาน ระบบ admin จะพิจารณาอนุมัติภายหลัง'}
           </Paragraph>
 
           {error && (
@@ -82,37 +101,45 @@ export default function Register() {
           )}
 
           <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
-            <Form.Item
-              label="ชื่อ-สกุล"
-              name="full_name"
-              rules={[
-                { required: true, message: 'กรุณาระบุชื่อ-สกุล' },
-                { max: 200, message: 'ชื่อ-สกุลยาวเกินไป' }
-              ]}
-            >
-              <Input placeholder="ชื่อ-สกุล" autoComplete="off" />
-            </Form.Item>
+            {mode === 'self' && (
+              <>
+                <Form.Item
+                  label="ชื่อ-สกุล"
+                  name="full_name"
+                  rules={[
+                    { required: true, message: 'กรุณาระบุชื่อ-สกุล' },
+                    { max: 200, message: 'ชื่อ-สกุลยาวเกินไป' }
+                  ]}
+                >
+                  <Input placeholder="ชื่อ-สกุล" autoComplete="off" />
+                </Form.Item>
+
+                <Form.Item
+                  label="ชื่อเล่น"
+                  name="nickname"
+                  rules={[
+                    { required: true, message: 'กรุณาระบุชื่อเล่น' },
+                    { max: 100, message: 'ชื่อเล่นยาวเกินไป' }
+                  ]}
+                >
+                  <Input placeholder="ชื่อเล่น" autoComplete="off" />
+                </Form.Item>
+              </>
+            )}
 
             <Form.Item
-              label="ชื่อเล่น"
-              name="nickname"
-              rules={[
-                { required: true, message: 'กรุณาระบุชื่อเล่น' },
-                { max: 100, message: 'ชื่อเล่นยาวเกินไป' }
-              ]}
-            >
-              <Input placeholder="ชื่อเล่น" autoComplete="off" />
-            </Form.Item>
-
-            <Form.Item
-              label="ตั้งค่ารหัสล็อกอิน"
+              label={mode === 'claim' ? 'รหัสเชิญ' : 'ตั้งค่ารหัสล็อกอิน'}
               name="login_code"
               rules={[
-                { required: true, message: 'กรุณาระบุรหัสล็อกอิน' },
-                { max: 100, message: 'รหัสล็อกอินยาวเกินไป' }
+                { required: true, message: mode === 'claim' ? 'กรุณาระบุรหัสเชิญ' : 'กรุณาระบุรหัสล็อกอิน' },
+                { max: 100, message: 'รหัสยาวเกินไป' }
               ]}
             >
-              <Input placeholder="รหัสล็อกอิน" autoComplete="off" />
+              <Input
+                placeholder={mode === 'claim' ? 'เช่น A-001' : 'รหัสล็อกอิน'}
+                autoComplete="off"
+                style={mode === 'claim' ? { fontSize: 18, letterSpacing: 1, fontFamily: 'monospace' } : undefined}
+              />
             </Form.Item>
 
             <Form.Item style={{ marginBottom: 0, marginTop: 8 }}>
@@ -124,7 +151,7 @@ export default function Register() {
                 size="large"
                 style={{ background: COLORS.primary, borderColor: COLORS.primary }}
               >
-                ลงทะเบียน
+                {mode === 'claim' ? 'ยืนยันรหัสเชิญ' : 'ลงทะเบียน'}
               </Button>
             </Form.Item>
           </Form>
@@ -142,4 +169,11 @@ const containerStyle = {
   padding: 16,
   maxWidth: 480,
   margin: '0 auto'
+};
+
+const modeBtnStyle = {
+  textAlign: 'center',
+  height: 44,
+  lineHeight: '42px',
+  fontWeight: 500,
 };

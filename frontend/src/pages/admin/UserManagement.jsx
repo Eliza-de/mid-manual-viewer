@@ -17,17 +17,19 @@ import {
 import {
   ArrowLeftOutlined, UserOutlined, CheckOutlined, StopOutlined,
   ReloadOutlined, MoreOutlined, KeyOutlined, CrownOutlined, PlayCircleOutlined,
-  SearchOutlined, DeleteOutlined, EditOutlined
+  SearchOutlined, DeleteOutlined, EditOutlined,
+  PlusOutlined, ClockCircleOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useNavigation } from '../../hooks/useNavigation.jsx';
 import { getIdToken } from '../../api/liff.js';
 import {
   listUsers, approveUser, disableUser, enableUser,
-  toggleAdmin, resetUserPin, deleteUser, updateUser,
+  toggleAdmin, resetUserPin, deleteUser, updateUser, createMember,
   bulkApproveUsers, bulkDisableUsers, bulkEnableUsers, bulkDeleteUsers
 } from '../../api/admin.js';
 import EditUserModal from '../../components/EditUserModal.jsx';
+import CreateMemberModal from '../../components/CreateMemberModal.jsx';
 import BulkActionBar from '../../components/BulkActionBar.jsx';
 import { COLORS } from '../../brand.js';
 
@@ -67,6 +69,7 @@ export default function UserManagement() {
   const [selected, setSelected] = useState(new Map());
   const selectedCount = selected.size;
   const [editingUser, setEditingUser] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const selfId = auth.session?.user?.lineUserId || auth.session?.lineUserId;
 
@@ -329,6 +332,8 @@ export default function UserManagement() {
   function renderUserCard(user) {
     const isSelf = user.line_user_id === selfId;
     const isChecked = selected.has(user.line_user_id);
+    const isShell = typeof user.line_user_id === 'string' && user.line_user_id.startsWith('shell:');
+    const displayLabel = isShell ? (user.full_name || user.nickname || '(ยังไม่ผูก LINE)') : user.display_name;
     return (
       <Card
         key={user.line_user_id}
@@ -336,7 +341,7 @@ export default function UserManagement() {
         style={{
           marginBottom: 8,
           borderColor: isChecked ? COLORS.primary : 'rgba(31,77,63,0.08)',
-          background: isChecked ? COLORS.bgSoft : '#fff',
+          background: isChecked ? COLORS.bgSoft : (isShell ? '#FFFBEB' : '#fff'),
           borderRadius: 12,
           borderWidth: '0.5px'
         }}
@@ -350,11 +355,13 @@ export default function UserManagement() {
           />
           {user.picture_url
             ? <Avatar src={user.picture_url} size={40} />
-            : <Avatar icon={<UserOutlined />} size={40} />
+            : <Avatar icon={isShell ? <ClockCircleOutlined /> : <UserOutlined />} size={40}
+                style={isShell ? { background: '#F59E0B' } : undefined} />
           }
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <Text strong style={{ fontSize: 14 }}>{user.display_name}</Text>
+              <Text strong style={{ fontSize: 14 }}>{displayLabel}</Text>
+              {isShell && <Tag color="orange" style={{ marginInlineEnd: 0 }}>รอ claim</Tag>}
               {user.is_admin && <Tag color="gold" style={{ marginInlineEnd: 0 }}>Admin</Tag>}
               {isSelf && <Tag color="blue" style={{ marginInlineEnd: 0 }}>คุณ</Tag>}
             </div>
@@ -399,10 +406,21 @@ export default function UserManagement() {
           <ArrowLeftOutlined style={{ fontSize: 18 }} />
         </div>
         <div style={titleStyle}>จัดการผู้ใช้</div>
-        <div style={iconBtnStyle} onClick={load} role="button">
-          <ReloadOutlined spin={loading} style={{ fontSize: 18 }} />
+        <div style={{ display: 'flex', gap: 6 }}>
+          <div style={iconBtnStyle} onClick={() => setCreateOpen(true)} role="button" title="เพิ่มสมาชิก">
+            <PlusOutlined style={{ fontSize: 18 }} />
+          </div>
+          <div style={iconBtnStyle} onClick={load} role="button">
+            <ReloadOutlined spin={loading} style={{ fontSize: 18 }} />
+          </div>
         </div>
       </div>
+
+      <CreateMemberModal
+        open={createOpen}
+        onClose={() => { setCreateOpen(false); load(); }}
+        onSubmit={(fields) => createMember(getIdToken(), auth.session.token, fields)}
+      />
 
       <Tabs
         activeKey={tab}

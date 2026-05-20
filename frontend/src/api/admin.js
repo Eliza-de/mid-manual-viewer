@@ -99,6 +99,9 @@ export async function deleteUser(idToken, sessionToken, lineUserId) {
 export async function updateUser(idToken, sessionToken, lineUserId, fields) {
   return post('/api/admin/users/update', { idToken, sessionToken, payload: { line_user_id: lineUserId, fields } });
 }
+export async function createMember(idToken, sessionToken, fields) {
+  return post('/api/admin/users/create', { idToken, sessionToken, payload: fields });
+}
 
 // ===== Phase 9: Bulk Users =====
 export async function bulkApproveUsers(idToken, sessionToken, lineUserIds) {
