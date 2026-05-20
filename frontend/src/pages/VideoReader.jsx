@@ -1,21 +1,20 @@
 /**
  * VideoReader — เครื่องเล่นวิดีโอรีวิว (LIFF mobile)
  *
- * ใช้ HTML5 <video> + signed URL (30 นาที) ที่มี HTTP Range support ฝั่ง worker.
- * ใช้ anti-capture เหมือน Reader: log การ blur / devtools / context-menu.
- * วิดีโอยังป้องกัน screen-recording ไม่ได้แบบ 100% — แค่ปิดทาง download ปกติ
- * (controlsList="nodownload", disablePictureInPicture) + lay watermark notice.
+ * Layout: top bar (compact) + video fills remaining viewport (object-contain).
+ * Autoplay: tries with sound first, falls back to muted if browser blocks
+ * (iOS Safari requires user gesture for sound-on autoplay). Shows a
+ * "🔊 แตะเพื่อเปิดเสียง" overlay when muted fallback kicked in.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { Typography } from 'antd';
-import { ArrowLeftOutlined, LoadingOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, LoadingOutlined, SoundOutlined } from '@ant-design/icons';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useNavigation } from '../hooks/useNavigation.jsx';
 import { useAntiCapture } from '../hooks/useAntiCapture.jsx';
 import { getIdToken } from '../api/liff.js';
 import { getVideo } from '../api/video.js';
-import AntiCaptureNotice from '../components/AntiCaptureNotice.jsx';
 import { COLORS } from '../brand.js';
 
 const { Text } = Typography;
@@ -30,6 +29,7 @@ export default function VideoReader() {
   const [poster, setPoster] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [mutedFallback, setMutedFallback] = useState(false);
 
   useAntiCapture({
     enabled: true,
@@ -37,7 +37,6 @@ export default function VideoReader() {
     pageNumber: null,
     onSuspectActivity: (event) => {
       if (event.type !== 'tab_visible') {
-        // Pause playback on suspect activity (best-effort)
         try {
           if (videoRef.current && !videoRef.current.paused) {
             videoRef.current.pause();
@@ -47,6 +46,7 @@ export default function VideoReader() {
     }
   });
 
+  // Fetch signed URL
   useEffect(() => {
     if (!doc?.id || !auth.session) return;
     let cancelled = false;
@@ -74,11 +74,45 @@ export default function VideoReader() {
     return () => { cancelled = true; };
   }, [doc?.id, auth.session, auth.logout]);
 
+  // Autoplay attempt — try with sound first, fall back to muted if browser
+  // rejects (iOS Safari, Chrome on mobile without prior interaction).
+  useEffect(() => {
+    if (!src || !videoRef.current) return;
+    const v = videoRef.current;
+    let cancelled = false;
+
+    const tryPlay = async () => {
+      try {
+        v.muted = false;
+        await v.play();
+        if (!cancelled) setMutedFallback(false);
+      } catch (_) {
+        if (cancelled) return;
+        v.muted = true;
+        setMutedFallback(true);
+        try { await v.play(); } catch (_) {}
+      }
+    };
+    // Small delay lets <video> register the src and metadata first
+    const t = setTimeout(tryPlay, 50);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [src]);
+
+  function unmute() {
+    if (!videoRef.current) return;
+    videoRef.current.muted = false;
+    setMutedFallback(false);
+    // Ensure it's still playing
+    if (videoRef.current.paused) {
+      videoRef.current.play().catch(() => {});
+    }
+  }
+
   if (!doc) return null;
 
   return (
     <div style={containerStyle}>
-      {/* Top bar */}
+      {/* Top bar — compact */}
       <div style={topBarStyle}>
         <div style={backBtnStyle} onClick={nav.closeDoc} role="button" aria-label="กลับ">
           <ArrowLeftOutlined style={{ fontSize: 18 }} />
@@ -90,38 +124,40 @@ export default function VideoReader() {
         </div>
       </div>
 
-      <AntiCaptureNotice />
-
-      {/* Player */}
+      {/* Player area — fills */}
       <div style={contentStyle}>
         {error ? (
           <div style={messageBoxStyle}>
-            <div style={{ color: '#dc2626', marginBottom: 8 }}>โหลดวิดีโอไม่สำเร็จ</div>
-            <div style={{ fontSize: 12, color: '#6B8278' }}>{error}</div>
+            <div style={{ color: '#fca5a5', marginBottom: 8 }}>โหลดวิดีโอไม่สำเร็จ</div>
+            <div style={{ fontSize: 12, color: '#94A3B8' }}>{error}</div>
           </div>
         ) : loading || !src ? (
           <div style={messageBoxStyle}>
-            <LoadingOutlined style={{ fontSize: 32, color: COLORS.primary, marginBottom: 12 }} />
-            <div style={{ fontSize: 13, color: '#6B8278' }}>กำลังโหลดวิดีโอ...</div>
+            <LoadingOutlined style={{ fontSize: 32, color: '#A4DFCB', marginBottom: 12 }} />
+            <div style={{ fontSize: 13, color: '#cbd5e1' }}>กำลังโหลดวิดีโอ...</div>
           </div>
         ) : (
-          <div style={playerWrapStyle}>
+          <>
             <video
               ref={videoRef}
               src={src}
               poster={poster || undefined}
               controls
+              autoPlay
+              playsInline
               controlsList="nodownload noplaybackrate"
               disablePictureInPicture
-              playsInline
-              preload="metadata"
+              preload="auto"
               onContextMenu={(e) => e.preventDefault()}
               style={videoStyle}
             />
-            {doc.description && (
-              <div style={descStyle}>{doc.description}</div>
+            {mutedFallback && (
+              <button onClick={unmute} style={unmuteBtnStyle}>
+                <SoundOutlined style={{ fontSize: 16 }} />
+                <span>แตะเพื่อเปิดเสียง</span>
+              </button>
             )}
-          </div>
+          </>
         )}
       </div>
     </div>
@@ -133,33 +169,32 @@ const containerStyle = {
   inset: 0,
   display: 'flex',
   flexDirection: 'column',
-  background: '#0e1110',
-  zIndex: 100
+  background: '#000',
+  zIndex: 100,
 };
 
 const topBarStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: 10,
-  padding: '12px 14px',
-  background: 'white',
-  borderBottom: '0.5px solid rgba(31,77,63,0.08)',
+  padding: '10px 12px',
+  background: 'rgba(15,17,16,0.92)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
   flexShrink: 0,
-  position: 'sticky',
-  top: 0,
+  position: 'relative',
   zIndex: 10,
-  boxShadow: '0 1px 3px rgba(31,77,63,0.04)'
 };
 
 const backBtnStyle = {
   width: 34,
   height: 34,
   borderRadius: 10,
-  background: '#DCEEE3',
+  background: 'rgba(255,255,255,0.12)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  color: COLORS.primary,
+  color: 'white',
   cursor: 'pointer',
   flexShrink: 0,
 };
@@ -169,7 +204,7 @@ const titleBlockStyle = {
   minWidth: 0,
   display: 'flex',
   alignItems: 'center',
-  gap: 8
+  gap: 8,
 };
 
 const tagMiniStyle = {
@@ -187,58 +222,54 @@ const tagMiniStyle = {
 const titleTextStyle = {
   fontSize: 13,
   fontWeight: 600,
-  color: COLORS.primary,
+  color: 'white',
   flex: 1,
   minWidth: 0,
 };
 
 const contentStyle = {
   flex: 1,
-  overflow: 'auto',
+  position: 'relative',
   display: 'flex',
-  flexDirection: 'column',
   alignItems: 'center',
-  justifyContent: 'flex-start',
-  background: '#0e1110',
-  padding: 12,
-};
-
-const playerWrapStyle = {
-  width: '100%',
-  maxWidth: 720,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 12,
+  justifyContent: 'center',
+  background: '#000',
+  overflow: 'hidden',
 };
 
 const videoStyle = {
   width: '100%',
+  height: '100%',
+  objectFit: 'contain',
   background: '#000',
-  borderRadius: 12,
   display: 'block',
-  maxHeight: 'calc(100vh - 220px)',
 };
 
-const descStyle = {
-  background: 'rgba(255,255,255,0.05)',
-  border: '0.5px solid rgba(255,255,255,0.1)',
-  borderRadius: 10,
-  padding: '10px 12px',
-  fontSize: 13,
-  lineHeight: 1.5,
-  color: '#cbd5e1',
+const unmuteBtnStyle = {
+  position: 'absolute',
+  top: 14,
+  right: 14,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '8px 12px',
+  borderRadius: 999,
+  background: 'rgba(0,0,0,0.7)',
+  color: 'white',
+  border: '1px solid rgba(255,255,255,0.25)',
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: 'pointer',
+  zIndex: 11,
+  backdropFilter: 'blur(6px)',
+  WebkitBackdropFilter: 'blur(6px)',
 };
 
 const messageBoxStyle = {
-  flex: 1,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
   padding: 24,
-  background: 'white',
-  borderRadius: 12,
-  margin: 'auto',
-  maxWidth: 360,
   textAlign: 'center',
 };
